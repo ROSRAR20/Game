@@ -12,6 +12,7 @@ export class ViewportManager {
   private container: HTMLElement;
   private onResizeCallback?: (size: ViewportSize) => void;
   private dprOverride: number | null = null;
+  private dynamicDpr: number = CONFIG.DEFAULT_DPR;
 
   constructor(canvas: HTMLCanvasElement, container: HTMLElement) {
     this.canvas = canvas;
@@ -29,8 +30,21 @@ export class ViewportManager {
       const parsed = parseFloat(dprParam);
       if (!isNaN(parsed) && parsed > 0 && parsed <= 3) {
         this.dprOverride = parsed;
-        console.info(`[SwarmGate] DPR overridden via query param: ${parsed}`);
+        this.dynamicDpr = parsed;
+        console.info(`[SwarmGate] Manual DPR override active: ${parsed}`);
       }
+    }
+  }
+
+  public hasManualDprOverride(): boolean {
+    return this.dprOverride !== null;
+  }
+
+  public setDynamicDpr(newDpr: number): void {
+    if (this.dprOverride !== null) return; // Respect manual override
+    if (Math.abs(this.dynamicDpr - newDpr) > 0.05) {
+      this.dynamicDpr = Math.max(0.75, Math.min(newDpr, 1.5));
+      this.handleResize();
     }
   }
 
@@ -43,14 +57,7 @@ export class ViewportManager {
     const width = Math.max(1, Math.floor(rect.width));
     const height = Math.max(1, Math.floor(rect.height));
 
-    let dpr: number;
-    if (this.dprOverride !== null) {
-      dpr = this.dprOverride;
-    } else {
-      const rawDpr = window.devicePixelRatio || 1;
-      dpr = Math.min(rawDpr, CONFIG.MAX_DPR);
-    }
-
+    const dpr = this.dprOverride !== null ? this.dprOverride : this.dynamicDpr;
     const aspect = width / height;
 
     return { width, height, dpr, aspect };

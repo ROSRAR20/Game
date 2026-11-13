@@ -4,10 +4,13 @@ import { createCamera, updateCameraAspect } from './render/camera';
 import { createScene } from './render/scene';
 import { CannonRender } from './render/cannon';
 import { MobRenderer } from './render/mobs';
+import { GateRenderer } from './render/gates';
 import { BareStressTest } from './render/bare_stress';
+import { AdaptiveQualityManager } from './render/adaptive';
 import { Simulation } from './sim/loop';
 import { InputManager } from './input/pointer';
 import { DebugOverlay } from './ui/debug';
+import { PlatformLifecycle, configureDisplay } from './platform';
 
 function init(): void {
   const container = document.getElementById('game-container');
@@ -28,7 +31,8 @@ function init(): void {
     antialias: false,
     powerPreference: 'high-performance',
     depth: true,
-    stencil: false
+    stencil: false,
+    preserveDrawingBuffer: true
   });
   renderer.setPixelRatio(initialSize.dpr);
   renderer.setSize(initialSize.width, initialSize.height, false);
@@ -53,10 +57,12 @@ function init(): void {
   // 5. Initialize Simulation & Input
   const sim = new Simulation();
   const input = new InputManager(container, sim.cannon);
+  const adaptive = new AdaptiveQualityManager(viewport);
 
   // 6. Visual renderers
   const cannonRender = new CannonRender(scene, sim.cannon);
   const mobRender = new MobRenderer(scene);
+  const gateRender = new GateRenderer(scene);
 
   let bareStress: BareStressTest | null = null;
 
@@ -68,22 +74,48 @@ function init(): void {
       sim.setStressMode(stressCount);
       console.info(`[SwarmGate] Gameplay mob stress mode active: ${stressCount} mobs`);
     }
+  } else {
+    // Build level gate banners on the track
+    gateRender.buildGates(sim.gates.getGates());
   }
 
-  // 7. Main animation loop
+  // 7. Platform initialization & lifecycle listeners
+  PlatformLifecycle.addListener({
+    onPause: () => {
+      console.info('[SwarmGate] Simulation paused on app background');
+    },
+    onResume: () => {
+      console.info('[SwarmGate] Simulation resumed on app foreground');
+      lastTime = performance.now();
+    }
+  });
+
+  configureDisplay().catch((err) => {
+    console.warn('[SwarmGate] Platform display setup note:', err);
+  });
+
+  // 8. Main animation loop
   let lastTime = performance.now();
 
   function animate(now: number): void {
     requestAnimationFrame(animate);
 
+    if (PlatformLifecycle.getIsPaused()) {
+      return;
+    }
+
     const dt = Math.min((now - lastTime) / 1000, 0.1);
     lastTime = now;
+
+    // Adaptive quality monitoring
+    adaptive.update(dt * 1000);
 
     // Update input (keyboard fallback, etc.)
     input.update(dt);
 
     if (bareStress) {
       bareStress.update(dt);
+      cannonRender.update();
     } else {
       // Step fixed 60 Hz simulation
       sim.update(dt);
@@ -96,7 +128,10 @@ function init(): void {
     renderer.render(scene, camera);
 
     const activeUnits = bareStress ? bareStress.count : sim.pool.count;
-    debug.update(now, activeUnits, renderer, viewport.getSize().dpr);
+    const getVisible = () =>
+      bareStress ? bareStress.count : mobRender.countVisibleUnits(camera, sim.pool);
+
+    debug.update(now, activeUnits, getVisible, renderer, viewport.getSize().dpr);
   }
 
   requestAnimationFrame(animate);

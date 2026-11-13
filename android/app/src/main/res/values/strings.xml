@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Swarm Gate</string>
+    <string name="title_activity_main">Swarm Gate</string>
+    <string name="package_name">com.rosra.swarmgate</string>
+    <string name="custom_url_scheme">com.rosra.swarmgate</string>
+</resources>

@@ -10,25 +10,70 @@ export class CannonRender {
     this.cannonSim = cannonSim;
     this.group = new THREE.Group();
 
-    // Stylized low-poly cannon base
-    const baseGeo = new THREE.CylinderGeometry(0.5, 0.6, 0.25, 12);
-    const baseMat = new THREE.MeshLambertMaterial({
-      color: CONFIG.COLORS.CANNON
+    // 1. Chassis platform
+    const chassisGeo = new THREE.BoxGeometry(1.5, 0.3, 1.2);
+    const chassisMat = new THREE.MeshLambertMaterial({
+      color: CONFIG.COLORS.CANNON_CHASSIS
     });
-    const baseMesh = new THREE.Mesh(baseGeo, baseMat);
-    baseMesh.position.y = 0.125;
-    this.group.add(baseMesh);
+    const chassis = new THREE.Mesh(chassisGeo, chassisMat);
+    chassis.position.y = 0.15;
+    this.group.add(chassis);
 
-    // Cannon barrel pointing along +Z
-    const barrelGeo = new THREE.CylinderGeometry(0.18, 0.22, 0.7, 10);
-    // Rotate barrel cylinder from Y-axis to Z-axis
+    // 2. Heavy side treads
+    const treadGeo = new THREE.BoxGeometry(0.35, 0.35, 1.3);
+    const treadMat = new THREE.MeshLambertMaterial({
+      color: CONFIG.COLORS.CANNON_TREADS
+    });
+
+    const leftTread = new THREE.Mesh(treadGeo, treadMat);
+    leftTread.position.set(-0.82, 0.175, 0);
+    this.group.add(leftTread);
+
+    const rightTread = new THREE.Mesh(treadGeo, treadMat);
+    rightTread.position.set(0.82, 0.175, 0);
+    this.group.add(rightTread);
+
+    // 3. Turret Dome
+    const domeGeo = new THREE.CylinderGeometry(0.45, 0.6, 0.35, 12);
+    const domeMat = new THREE.MeshLambertMaterial({
+      color: CONFIG.COLORS.CANNON_DOME
+    });
+    const dome = new THREE.Mesh(domeGeo, domeMat);
+    dome.position.y = 0.45;
+    this.group.add(dome);
+
+    // 4. Main Barrel pointing forward along +Z
+    const barrelGeo = new THREE.CylinderGeometry(0.18, 0.22, 1.0, 10);
     barrelGeo.rotateX(Math.PI / 2);
     const barrelMat = new THREE.MeshLambertMaterial({
-      color: CONFIG.COLORS.CANNON_ACCENT
+      color: CONFIG.COLORS.CANNON_BARREL
     });
-    const barrelMesh = new THREE.Mesh(barrelGeo, barrelMat);
-    barrelMesh.position.set(0, 0.28, 0.35);
-    this.group.add(barrelMesh);
+    const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+    barrel.position.set(0, 0.45, 0.65);
+    this.group.add(barrel);
+
+    // 5. High-contrast muzzle ring at barrel tip
+    const muzzleGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.18, 10);
+    muzzleGeo.rotateX(Math.PI / 2);
+    const muzzleMat = new THREE.MeshBasicMaterial({
+      color: CONFIG.COLORS.CANNON_MUZZLE
+    });
+    const muzzle = new THREE.Mesh(muzzleGeo, muzzleMat);
+    muzzle.position.set(0, 0.45, 1.15);
+    this.group.add(muzzle);
+
+    // 6. Glowing aim / base ring on ground
+    const ringGeo = new THREE.RingGeometry(0.85, 1.0, 24);
+    ringGeo.rotateX(-Math.PI / 2);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: CONFIG.COLORS.CANNON_RING,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.7
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.y = 0.02;
+    this.group.add(ring);
 
     this.group.position.set(this.cannonSim.x, 0, CONFIG.CANNON_Z);
     scene.add(this.group);

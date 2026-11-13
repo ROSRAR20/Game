@@ -2,11 +2,14 @@ import { CONFIG } from '../config/constants';
 import { MobPool, createMobPool, despawnMob } from './pool';
 import { CannonSim } from './cannon';
 import { SeededRNG } from './rng';
+import { GateManager } from './gates';
+import { getLevelGates } from '../data/level';
 
 export class Simulation {
   public pool: MobPool;
   public cannon: CannonSim;
   public rng: SeededRNG;
+  public gates: GateManager;
 
   private accumulator: number = 0;
   private isStressMode: boolean = false;
@@ -15,6 +18,8 @@ export class Simulation {
     this.pool = createMobPool(capacity);
     this.cannon = new CannonSim();
     this.rng = new SeededRNG(seed);
+    this.gates = new GateManager(this.rng);
+    this.gates.setGates(getLevelGates());
   }
 
   public setStressMode(targetCount: number): void {
@@ -64,12 +69,21 @@ export class Simulation {
       // Update positions
       pool.x[slot] += pool.vx[slot] * dt;
       pool.z[slot] += pool.vz[slot] * dt;
+    }
 
-      // Handle boundary conditions
+    // 3. Process gate crossings and clone emissions
+    if (!this.isStressMode) {
+      this.gates.update(this.pool, dt);
+    }
+
+    // 4. Handle boundary conditions
+    for (let i = pool.count - 1; i >= 0; i--) {
+      const slot = pool.activeIndices[i];
       if (this.isStressMode) {
-        // In stress mode, loop units back to cannon area to sustain steady count
+        // In stress mode, wrap units continuously to maintain uniform screen coverage
+        const span = CONFIG.ROAD_LENGTH - CONFIG.CANNON_MUZZLE_Z;
         if (pool.z[slot] > CONFIG.ROAD_LENGTH) {
-          pool.z[slot] = CONFIG.CANNON_Z + this.rng.nextRange(0, 1.5);
+          pool.z[slot] -= span;
           pool.x[slot] = this.rng.nextRange(CONFIG.CANNON_MIN_X, CONFIG.CANNON_MAX_X);
         }
       } else {

@@ -40,7 +40,7 @@ HUD is plain DOM/CSS over the canvas. Audio via WebAudio (Howler allowed).
 - Pause the sim and audio on app background, resume cleanly on return (`@capacitor/app`).
 - Unlock WebAudio on the first touch. Persist saves through `@capacitor/preferences`, not raw `localStorage`.
 - Adaptive quality: measure frame time and lower pixel ratio or unit cap automatically when the device struggles or heats up.
-- Cap `devicePixelRatio` at 1.5 on low-tier devices (fill rate is the bottleneck on this GPU class), 2 otherwise. No real-time shadows, no post-processing in v0. Keep install size small (compressed textures, meshopt GLB).
+- Cap `devicePixelRatio` at 1 on this device class (fill rate is the bottleneck on this GPU class: 52 fps at 1.5 vs 60 fps at 1.0 on vivo V21e), 1.5 or 2 on higher-tier devices. No real-time shadows, no post-processing in v0. Keep install size small (compressed textures, meshopt GLB).
 - Must work fully offline. No network calls in v0.
 
 ## Quality bar

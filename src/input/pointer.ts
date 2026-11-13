@@ -22,7 +22,8 @@ export class InputManager {
   }
 
   private attachPointerListeners(): void {
-    this.container.addEventListener('pointerdown', this.onPointerDown);
+    // Listen on window so touches/clicks anywhere on screen drag the cannon smoothly
+    window.addEventListener('pointerdown', this.onPointerDown);
     window.addEventListener('pointermove', this.onPointerMove);
     window.addEventListener('pointerup', this.onPointerUp);
     window.addEventListener('pointercancel', this.onPointerUp);
@@ -37,10 +38,19 @@ export class InputManager {
     // Single finger touch tracking
     if (this.activePointerId !== null) return;
 
+    // Do not initiate cannon drag if interacting with the debug overlay
+    const target = e.target as HTMLElement | null;
+    if (target && target.closest('#debug-overlay')) return;
+
     this.activePointerId = e.pointerId;
     this.isDragging = true;
     this.lastPointerX = e.clientX;
-    this.container.setPointerCapture(e.pointerId);
+
+    try {
+      this.container.setPointerCapture(e.pointerId);
+    } catch {
+      // Ignore if setPointerCapture is unsupported or failed
+    }
   };
 
   private onPointerMove = (e: PointerEvent): void => {
@@ -55,7 +65,10 @@ export class InputManager {
     // Relative touch sensitivity factor (1.5x gives responsive feel on mobile)
     const worldDeltaX = (deltaPixelX / containerWidth) * CONFIG.ROAD_WIDTH * 1.5;
 
-    this.cannon.addDeltaX(worldDeltaX);
+    // In Three.js right-handed camera looking along +Z:
+    // Screen Right corresponds to decreasing X in world space.
+    // Therefore, dragging right (deltaPixelX > 0) decreases world X to move right on screen.
+    this.cannon.addDeltaX(-worldDeltaX);
   };
 
   private onPointerUp = (e: PointerEvent): void => {
@@ -87,19 +100,20 @@ export class InputManager {
   };
 
   public update(dt: number): void {
-    // Keyboard input fallback for desktop verification
+    // Keyboard input fallback:
+    // Left on screen -> increase world X
+    // Right on screen -> decrease world X
+    const keyboardSpeed = 16; // world units per sec
     if (this.keyLeft) {
-      const keyboardSpeed = 16; // world units per sec
-      this.cannon.addDeltaX(-keyboardSpeed * dt);
+      this.cannon.addDeltaX(keyboardSpeed * dt);
     }
     if (this.keyRight) {
-      const keyboardSpeed = 16;
-      this.cannon.addDeltaX(keyboardSpeed * dt);
+      this.cannon.addDeltaX(-keyboardSpeed * dt);
     }
   }
 
   public dispose(): void {
-    this.container.removeEventListener('pointerdown', this.onPointerDown);
+    window.removeEventListener('pointerdown', this.onPointerDown);
     window.removeEventListener('pointermove', this.onPointerMove);
     window.removeEventListener('pointerup', this.onPointerUp);
     window.removeEventListener('pointercancel', this.onPointerUp);

@@ -35,7 +35,7 @@ test.describe('M0 Baseline Smoke & Visuals', () => {
     await page.waitForTimeout(1000);
 
     const unitsText = await page.locator('#dbg-units').textContent();
-    expect(Number(unitsText)).toBe(500);
+    expect(parseInt(unitsText || '0', 10)).toBe(500);
 
     // Capture screenshot of stress mode
     await page.screenshot({ path: 'test-results/m0-bare-stress-500.png' });
@@ -51,7 +51,7 @@ test.describe('M0 Baseline Smoke & Visuals', () => {
     await page.waitForTimeout(1000);
 
     const unitsText = await page.locator('#dbg-units').textContent();
-    expect(Number(unitsText)).toBe(2000);
+    expect(parseInt(unitsText || '0', 10)).toBe(2000);
 
     await page.screenshot({ path: 'test-results/m0-bare-stress-2000.png' });
   });

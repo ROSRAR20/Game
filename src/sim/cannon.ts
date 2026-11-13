@@ -39,10 +39,13 @@ export class CannonSim {
       const needed = this.stressTargetCount - pool.count;
       if (needed > 0) {
         // Spawn batch without object allocations
-        const batchSize = Math.min(needed, Math.max(10, Math.ceil(this.stressTargetCount * dt * 2)));
+        const batchSize = Math.min(
+          needed,
+          Math.max(10, Math.ceil(this.stressTargetCount * dt * 2))
+        );
         for (let i = 0; i < batchSize; i++) {
           const spawnX = rng.nextRange(CONFIG.CANNON_MIN_X, CONFIG.CANNON_MAX_X);
-          const spawnZ = rng.nextRange(CONFIG.CANNON_Z, CONFIG.ROAD_LENGTH * 0.8);
+          const spawnZ = rng.nextRange(CONFIG.CANNON_MUZZLE_Z, CONFIG.ROAD_LENGTH * 0.8);
           spawnMob(
             pool,
             spawnX,
@@ -69,7 +72,7 @@ export class CannonSim {
         spawnMob(
           pool,
           this.x + jitterX,
-          CONFIG.CANNON_Z,
+          CONFIG.CANNON_MUZZLE_Z,
           0,
           CONFIG.MOB_BASE_SPEED,
           0, // team 0 (Blue)

@@ -7,12 +7,15 @@ Tracked technical debt, deferred features, and optimization opportunities.
 ### Milestone M1 (Core Loop & Gate)
 - [x] Connect draggable cannon auto-firing blue mobs to fixed-timestep simulation.
 - [x] Implement SoA mob pool with zero-allocation recycling.
-- [ ] Perform M1 go/no-go gate testing on vivo V21e via local Wi-Fi.
+- [x] Perform M1 go/no-go gate testing on vivo V21e via local Wi-Fi (PASSED: 60 fps at 2000 mobs, dpr=1).
 
 ### Milestone M1.5 (Android Shell)
-- [ ] Initialize Capacitor Android project shell (`npx cap add android`).
-- [ ] Setup app lifecycle handling (`@capacitor/app`) to pause sim on background.
-- [ ] Implement Android back-button handler.
+- [x] Initialize Capacitor Android project shell (`npx cap add android`) with `appId: com.rosra.swarmgate`.
+- [x] Setup app lifecycle handling (`@capacitor/app`) to pause sim on background and resume on return.
+- [x] Implement Android back-button handler.
+- [x] Configure status bar overlay and splash screen (`@capacitor/status-bar`, `@capacitor/splash-screen`).
+- [x] Lock portrait orientation (`android:screenOrientation="portrait"`).
+- [ ] Build and verify on device / APK assembly.
 
 ### Milestone M2 (Gates & Clone Logic)
 - [ ] Implement flat banner gate meshes with cached 2D canvas numeral textures.

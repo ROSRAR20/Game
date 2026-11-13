@@ -26,19 +26,26 @@ export class BareStressTest {
       10,
       4
     );
+    geometry.boundingSphere = new THREE.Sphere(
+      new THREE.Vector3(0, 0, CONFIG.ROAD_LENGTH / 2),
+      CONFIG.ROAD_LENGTH
+    );
     this.trianglesPerUnit = geometry.index ? geometry.index.count / 3 : 0;
 
     const material = new THREE.MeshLambertMaterial({
-      color: CONFIG.COLORS.STRESS_CUBE
+      color: CONFIG.COLORS.STRESS_CUBE,
+      emissive: 0x0891b2,
+      emissiveIntensity: 0.25
     });
 
     this.mesh = new THREE.InstancedMesh(geometry, material, count);
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.mesh.frustumCulled = false; // Prevent false base-geometry culling
 
     // Initialize random positions spread across the road
     for (let i = 0; i < count; i++) {
       this.x[i] = ((Math.random() - 0.5) * 2) * (CONFIG.ROAD_WIDTH / 2 - 0.8);
-      this.z[i] = 2 + Math.random() * (CONFIG.ROAD_LENGTH - 4);
+      this.z[i] = CONFIG.CANNON_MUZZLE_Z + Math.random() * (CONFIG.ROAD_LENGTH - CONFIG.CANNON_MUZZLE_Z);
       this.speed[i] = 8 + Math.random() * 6;
 
       this.dummy.position.set(this.x[i], CONFIG.MOB_HEIGHT / 2, this.z[i]);
@@ -51,13 +58,14 @@ export class BareStressTest {
   }
 
   public update(dt: number): void {
-    const minZ = 1;
+    const minZ = CONFIG.CANNON_MUZZLE_Z;
     const maxZ = CONFIG.ROAD_LENGTH - 1;
+    const span = maxZ - minZ;
 
     for (let i = 0; i < this.count; i++) {
       let currentZ = this.z[i] + this.speed[i] * dt;
       if (currentZ > maxZ) {
-        currentZ = minZ + (currentZ - maxZ);
+        currentZ -= span;
       }
       this.z[i] = currentZ;
 

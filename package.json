@@ -10,13 +10,20 @@
     "test": "vitest run",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "check": "npm run lint && npm run typecheck && npm run test"
+    "check": "npm run lint && npm run typecheck && npm run test",
+    "android": "npm run build && npx cap sync android && npx cap run android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4",
     "three": "^0.160.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.6.10",
     "@playwright/test": "^1.40.1",
     "@types/three": "^0.160.0",
     "eslint": "^9.0.0",

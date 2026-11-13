@@ -4,6 +4,7 @@ export interface DebugMetrics {
   fps: number;
   frameTimeMs: number;
   unitCount: number;
+  visibleCount: number;
   drawCalls: number;
   triangles: number;
   dpr: number;
@@ -34,8 +35,10 @@ export class DebugOverlay {
 
   private parseQueryParams(): void {
     const params = new URLSearchParams(window.location.search);
+    const hasStoredDebug =
+      typeof localStorage !== 'undefined' && localStorage.getItem('swarmgate_debug') === 'true';
 
-    if (params.has('debug')) {
+    if (params.has('debug') || hasStoredDebug) {
       this.isVisible = true;
     }
 
@@ -61,6 +64,39 @@ export class DebugOverlay {
     if (this.overlayEl && this.isVisible) {
       this.overlayEl.style.display = 'block';
     }
+
+    // Triple tap in the top-left area to toggle debug overlay on device
+    let tapCount = 0;
+    let lastTapTime = 0;
+    window.addEventListener('pointerdown', (e) => {
+      if (e.clientY < 120 && e.clientX < 150) {
+        const now = performance.now();
+        if (now - lastTapTime < 500) {
+          tapCount++;
+          if (tapCount >= 3) {
+            this.toggleVisibility();
+            tapCount = 0;
+          }
+        } else {
+          tapCount = 1;
+        }
+        lastTapTime = now;
+      }
+    });
+
+    // Dev/debug hook
+    (window as unknown as { __toggleDebug?: () => void }).__toggleDebug = () =>
+      this.toggleVisibility();
+  }
+
+  public toggleVisibility(): void {
+    this.isVisible = !this.isVisible;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('swarmgate_debug', this.isVisible ? 'true' : 'false');
+    }
+    if (this.overlayEl) {
+      this.overlayEl.style.display = this.isVisible ? 'block' : 'none';
+    }
   }
 
   public getStressCount(): number {
@@ -78,7 +114,13 @@ export class DebugOverlay {
     }
   }
 
-  public update(now: number, activeUnits: number, renderer: THREE.WebGLRenderer, dpr: number): void {
+  public update(
+    now: number,
+    activeUnits: number,
+    getVisibleUnits: () => number,
+    renderer: THREE.WebGLRenderer,
+    dpr: number
+  ): void {
     const delta = now - this.lastTime;
     this.frameCount++;
 
@@ -89,12 +131,14 @@ export class DebugOverlay {
       this.lastTime = now;
 
       if (this.isVisible && this.overlayEl) {
+        const visibleUnits = getVisibleUnits();
         if (this.fpsEl) this.fpsEl.textContent = String(this.fps);
         if (this.msEl) this.msEl.textContent = String(this.frameTimeMs);
-        if (this.unitsEl) this.unitsEl.textContent = String(activeUnits);
-        const totalTris = renderer.info.render.triangles + activeUnits * 100;
+        if (this.unitsEl) {
+          this.unitsEl.textContent = `${activeUnits} (vis: ${visibleUnits})`;
+        }
         if (this.drawsEl) this.drawsEl.textContent = String(renderer.info.render.calls);
-        if (this.trisEl) this.trisEl.textContent = String(totalTris);
+        if (this.trisEl) this.trisEl.textContent = String(renderer.info.render.triangles);
         if (this.dprEl) this.dprEl.textContent = String(dpr.toFixed(1));
       }
     }
@@ -105,6 +149,7 @@ export class DebugOverlay {
       fps: this.fps,
       frameTimeMs: this.frameTimeMs,
       unitCount: 0,
+      visibleCount: 0,
       drawCalls: 0,
       triangles: 0,
       dpr: 1.0
