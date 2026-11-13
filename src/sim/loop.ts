@@ -69,6 +69,18 @@ export class Simulation {
       // Update positions
       pool.x[slot] += pool.vx[slot] * dt;
       pool.z[slot] += pool.vz[slot] * dt;
+
+      // Dampen lateral expansion impulse so swarm stabilizes into forward march
+      pool.vx[slot] *= 0.92;
+
+      // Keep units clamped within road fences
+      if (pool.x[slot] < CONFIG.ROAD_X_MIN + CONFIG.MOB_RADIUS) {
+        pool.x[slot] = CONFIG.ROAD_X_MIN + CONFIG.MOB_RADIUS;
+        pool.vx[slot] = 0;
+      } else if (pool.x[slot] > CONFIG.ROAD_X_MAX - CONFIG.MOB_RADIUS) {
+        pool.x[slot] = CONFIG.ROAD_X_MAX - CONFIG.MOB_RADIUS;
+        pool.vx[slot] = 0;
+      }
     }
 
     // 3. Process gate crossings and clone emissions

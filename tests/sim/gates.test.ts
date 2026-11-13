@@ -198,5 +198,45 @@ describe('Milestone M2 Gates & Clone Math', () => {
       const totalWeight = pool.weight[pool.activeIndices[0]] + pool.weight[pool.activeIndices[1]];
       expect(totalWeight).toBe(3); // 1 original + 2 clones represented
     });
+
+    it('continuous stream passing +5 gate grants +5 clones for EVERY passing unit', () => {
+      const rng = new SeededRNG(55);
+      const pool = createMobPool(200);
+      const gateManager = new GateManager(rng);
+
+      // +5 gate at Z = 25
+      const gate = createGate(1, 'add', 5, -3, 6, 25);
+      gateManager.setGates([gate]);
+
+      // 10 consecutive units pass through +5 gate one after another
+      for (let u = 0; u < 10; u++) {
+        const slot = spawnMob(pool, -3, 24.8, 0, 12, 0);
+        pool.z[slot] = 25.1; // Cross gate
+        gateManager.update(pool, 1 / 60);
+      }
+
+      // 10 units * 6 (1 original + 5 clones each) = 60 units total
+      expect(pool.count).toBe(60);
+    });
+
+    it('continuous stream passing x2 gate doubles EVERY passing unit', () => {
+      const rng = new SeededRNG(88);
+      const pool = createMobPool(200);
+      const gateManager = new GateManager(rng);
+
+      // x2 gate at Z = 25
+      const gate = createGate(2, 'mul', 2, 3, 6, 25);
+      gateManager.setGates([gate]);
+
+      // 10 consecutive units pass through x2 gate one after another
+      for (let u = 0; u < 10; u++) {
+        const slot = spawnMob(pool, 3, 24.8, 0, 12, 0);
+        pool.z[slot] = 25.1; // Cross gate
+        gateManager.update(pool, 1 / 60);
+      }
+
+      // 10 units * 2 (1 original + 1 clone each) = 20 units total
+      expect(pool.count).toBe(20);
+    });
   });
 });

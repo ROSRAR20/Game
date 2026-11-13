@@ -160,12 +160,9 @@ export class GateManager {
    */
   public update(pool: MobPool, dt: number): void {
     // 1. Drain pending clones from previous frame bursts (up to per-tick budget)
-    const clonesSpawnedThisTick = this.cloneBuffer.popIntoPool(
-      pool,
-      CONFIG.GATES.MAX_CLONES_PER_TICK
-    );
-
-    const maxNewClones = CONFIG.GATES.MAX_CLONES_PER_TICK - clonesSpawnedThisTick;
+    let budgetRemaining: number = CONFIG.GATES.MAX_CLONES_PER_TICK;
+    const clonesPopped = this.cloneBuffer.popIntoPool(pool, budgetRemaining);
+    budgetRemaining = Math.max(0, budgetRemaining - clonesPopped);
 
     // 2. Check gate crossings for active units
     // Iterate backwards so despawns (sub/div) don't disrupt dense index iteration
@@ -191,14 +188,15 @@ export class GateManager {
             if (unitLastGateId !== gate.id) {
               pool.lastGateId[slot] = gate.id;
 
-              this.handleGateTrigger(
+              const spawned = this.handleGateTrigger(
                 gate,
                 pool,
                 slot,
                 unitX,
                 vz,
-                maxNewClones - clonesSpawnedThisTick
+                budgetRemaining
               );
+              budgetRemaining = Math.max(0, budgetRemaining - spawned);
             }
           }
         }
@@ -210,45 +208,39 @@ export class GateManager {
     gate: Gate,
     pool: MobPool,
     passingSlot: number,
-    passingX: number,
+    unitX: number,
     vz: number,
     immediateBudget: number
-  ): void {
-    const spawnZ = gate.z + CONFIG.GATES.PLANE_OFFSET_Z;
+  ): number {
     const unitWeight = pool.weight[passingSlot];
 
     switch (gate.kind) {
       case 'mul': {
-        // xN multiplies this unit into N units (creates N - 1 new clones)
+        // xN multiplies this unit into N units (creates (N - 1) * weight new clones)
         const clonesNeeded = (gate.value - 1) * unitWeight;
-        this.spawnOrQueueClones(
+        return this.spawnOrQueueClones(
           pool,
+          gate,
           clonesNeeded,
-          passingX,
-          spawnZ,
+          unitX,
           vz,
           gate.id,
           immediateBudget
         );
-        break;
       }
 
       case 'add': {
-        // +N grants N clones total upon contact
-        if (gate.remainingValue > 0) {
-          const toAdd = gate.remainingValue;
-          gate.remainingValue = 0; // consumed
-          this.spawnOrQueueClones(
-            pool,
-            toAdd,
-            passingX,
-            spawnZ,
-            vz,
-            gate.id,
-            immediateBudget
-          );
-        }
-        break;
+        // +N grants N extra clones per unit passing through (persistent gate, active on every mob)
+        const clonesNeeded = gate.value * unitWeight;
+        return this.spawnOrQueueClones(
+          pool,
+          gate,
+          clonesNeeded,
+          unitX,
+          vz,
+          gate.id,
+          immediateBudget
+        );
       }
 
       case 'sub': {
@@ -262,7 +254,7 @@ export class GateManager {
             gate.remainingValue = 0;
           }
         }
-        break;
+        return 0;
       }
 
       case 'div': {
@@ -272,37 +264,45 @@ export class GateManager {
           despawnMob(pool, passingSlot);
         }
         this.divCounter.set(gate.id, currentAccum);
-        break;
+        return 0;
       }
     }
   }
 
   private spawnOrQueueClones(
     pool: MobPool,
+    gate: Gate,
     count: number,
     centerX: number,
-    spawnZ: number,
     vz: number,
     gateId: number,
     immediateBudget: number
-  ): void {
+  ): number {
     let spawnedImmediate = 0;
+    const spawnZ = gate.z + CONFIG.GATES.PLANE_OFFSET_Z;
+
+    const laneMinX = gate.x - gate.width / 2 + CONFIG.MOB_RADIUS + 0.1;
+    const laneMaxX = gate.x + gate.width / 2 - CONFIG.MOB_RADIUS - 0.1;
 
     for (let c = 0; c < count; c++) {
-      // Lateral jitter fanning out clones across the lane
-      const jitter = (this.rng.nextFloat() - 0.5) * 1.2;
-      const cloneX = Math.max(
-        CONFIG.ROAD_X_MIN + 0.5,
-        Math.min(CONFIG.ROAD_X_MAX - 0.5, centerX + jitter)
-      );
+      // Fan out clones laterally across the lane around the parent mob
+      const fanOffset =
+        count === 1
+          ? (this.rng.nextFloat() - 0.5) * 0.8
+          : ((c + 0.5) - count / 2) * Math.min(0.65, (gate.width * 0.75) / count) +
+            (this.rng.nextFloat() - 0.5) * 0.2;
+
+      const cloneX = Math.max(laneMinX, Math.min(laneMaxX, centerX + fanOffset));
+
+      // Small lateral expansion impulse so the mob crowd blossoms naturally
+      const cloneVx = fanOffset * 0.8;
 
       if (spawnedImmediate < immediateBudget) {
-        // Spawn immediately: inherit gate ID and spawn just past gate plane
         spawnMob(
           pool,
           cloneX,
           spawnZ,
-          0,
+          cloneVx,
           vz,
           0, // team 0 = blue
           0, // tier
@@ -314,9 +314,11 @@ export class GateManager {
         spawnedImmediate++;
       } else {
         // Buffer remainder for subsequent ticks to prevent frame spikes
-        this.cloneBuffer.push(cloneX, spawnZ, 0, vz, 0, 1, gateId);
+        this.cloneBuffer.push(cloneX, spawnZ, cloneVx, vz, 0, 1, gateId);
       }
     }
+
+    return spawnedImmediate;
   }
 
   public getPendingBufferCount(): number {
