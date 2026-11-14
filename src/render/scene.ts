@@ -9,7 +9,7 @@ export interface GameScene {
 
 export function createScene(): GameScene {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(CONFIG.COLORS.BACKGROUND);
+  scene.background = new THREE.Color(CONFIG.COLORS.SAND);
 
   // Lighting: crisp directional + ambient (no shadow maps for performance)
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
@@ -49,26 +49,24 @@ export function createScene(): GameScene {
   rightCurb.position.set(CONFIG.ROAD_WIDTH / 2, 0.2, CONFIG.ROAD_LENGTH / 2);
   scene.add(rightCurb);
 
-  // Center dashed line or lane dividers
+  // Center dashed line or lane dividers (opaque, no transparent passes)
   const laneGeo = new THREE.PlaneGeometry(0.2, CONFIG.ROAD_LENGTH);
   laneGeo.rotateX(-Math.PI / 2);
   laneGeo.translate(0, 0.01, CONFIG.ROAD_LENGTH / 2);
   const laneMat = new THREE.MeshBasicMaterial({
     color: CONFIG.COLORS.ROAD_MARKING,
-    transparent: true,
-    opacity: 0.6
+    transparent: false
   });
   const laneMesh = new THREE.Mesh(laneGeo, laneMat);
   scene.add(laneMesh);
 
-  // Cannon start line indicator at Z = CANNON_Z
+  // Cannon start line indicator at Z = CANNON_Z (opaque)
   const startLineGeo = new THREE.PlaneGeometry(CONFIG.ROAD_WIDTH, 0.15);
   startLineGeo.rotateX(-Math.PI / 2);
   startLineGeo.translate(0, 0.015, CONFIG.CANNON_Z);
   const startLineMat = new THREE.MeshBasicMaterial({
     color: CONFIG.COLORS.ROAD_EDGE,
-    transparent: true,
-    opacity: 0.8
+    transparent: false
   });
   const startLine = new THREE.Mesh(startLineGeo, startLineMat);
   scene.add(startLine);

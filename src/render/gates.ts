@@ -131,9 +131,15 @@ export class GateRenderer {
 
   /**
    * Instantiates flat banner meshes for the provided level gates.
+   * Orients banner meshes around Y to face camera yaw so numerals read upright and unskewed.
    */
-  public buildGates(gates: readonly Gate[]): void {
+  public buildGates(
+    gates: readonly Gate[],
+    cameraYawDeg: number = CONFIG.CAMERA_YAW
+  ): void {
     this.dispose();
+
+    const yawRad = (cameraYawDeg * Math.PI) / 180;
 
     for (const gate of gates) {
       const geometry = new THREE.PlaneGeometry(gate.width, CONFIG.GATES.HEIGHT);
@@ -141,11 +147,12 @@ export class GateRenderer {
 
       const mesh = new THREE.Mesh(geometry, material);
       mesh.position.set(gate.x, CONFIG.GATES.BANNER_Y, gate.z);
-      // Face toward cannon looking from -Z
-      mesh.rotation.y = Math.PI;
+      // Face camera directly to prevent skewed reading
+      mesh.rotation.y = Math.PI + yawRad;
 
-      // Add a thin glowing base energy line on the road beneath the gate
+      // Add a thin glowing base energy line on the road beneath the gate (parallel to road X-axis)
       const lineGeom = new THREE.PlaneGeometry(gate.width, 0.15);
+      lineGeom.rotateX(-Math.PI / 2);
       const lineColor =
         gate.kind === 'mul'
           ? 0x4ade80
@@ -154,17 +161,15 @@ export class GateRenderer {
             : 0xf87171;
       const lineMat = new THREE.MeshBasicMaterial({
         color: lineColor,
-        transparent: true,
-        opacity: 0.85,
+        transparent: false,
         side: THREE.DoubleSide
       });
       const lineMesh = new THREE.Mesh(lineGeom, lineMat);
-      lineMesh.rotation.x = -Math.PI / 2;
-      lineMesh.position.set(0, -CONFIG.GATES.BANNER_Y + 0.05, 0);
-      mesh.add(lineMesh);
+      lineMesh.position.set(gate.x, 0.05, gate.z);
 
       this.scene.add(mesh);
-      this.gateMeshes.push(mesh);
+      this.scene.add(lineMesh);
+      this.gateMeshes.push(mesh, lineMesh);
     }
   }
 

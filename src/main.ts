@@ -1,10 +1,12 @@
 import * as THREE from 'three';
+import { CONFIG, getEffectiveCameraConfig } from './config/constants';
 import { ViewportManager } from './render/viewport';
 import { createCamera, updateCameraAspect } from './render/camera';
 import { createScene } from './render/scene';
 import { CannonRender } from './render/cannon';
 import { MobRenderer } from './render/mobs';
 import { GateRenderer } from './render/gates';
+import { FarFieldHorde } from './render/far_field';
 import { BareStressTest } from './render/bare_stress';
 import { AdaptiveQualityManager } from './render/adaptive';
 import { Simulation } from './sim/loop';
@@ -25,7 +27,7 @@ function init(): void {
   const viewport = new ViewportManager(canvas, container);
   const initialSize = viewport.getSize();
 
-  // 2. Renderer setup
+  // 2. Renderer setup (set sand color as WebGL clear color)
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: false,
@@ -36,30 +38,36 @@ function init(): void {
   });
   renderer.setPixelRatio(initialSize.dpr);
   renderer.setSize(initialSize.width, initialSize.height, false);
+  renderer.setClearColor(CONFIG.COLORS.SAND, 1.0);
 
   // 3. Scene & Camera setup
   const { scene } = createScene();
-  const camera = createCamera(initialSize);
+  const camConfig = getEffectiveCameraConfig();
+  const camera = createCamera(initialSize, camConfig);
+
+  // 4. Far-field horde carpet (flat opaque quad continuation of road)
+  new FarFieldHorde(scene);
+
+  // 5. Initialize Simulation & Input
+  const sim = new Simulation();
+  const input = new InputManager(container, sim.cannon, camera);
+  const adaptive = new AdaptiveQualityManager(viewport);
 
   // Handle window/container resizing
   viewport.onResize((size) => {
     renderer.setPixelRatio(size.dpr);
     renderer.setSize(size.width, size.height, false);
     updateCameraAspect(camera, size);
+    input.updateProjectionAxis(camera);
   });
 
-  // 4. Debug overlay & stress mode query
+  // 6. Debug overlay & stress mode query
   const debug = new DebugOverlay();
   const stressCount = debug.getStressCount();
   const urlParams = new URLSearchParams(window.location.search);
   const useBareStress = urlParams.has('bare');
 
-  // 5. Initialize Simulation & Input
-  const sim = new Simulation();
-  const input = new InputManager(container, sim.cannon);
-  const adaptive = new AdaptiveQualityManager(viewport);
-
-  // 6. Visual renderers
+  // 7. Visual renderers
   const cannonRender = new CannonRender(scene, sim.cannon);
   const mobRender = new MobRenderer(scene);
   const gateRender = new GateRenderer(scene);
@@ -75,8 +83,8 @@ function init(): void {
       console.info(`[SwarmGate] Gameplay mob stress mode active: ${stressCount} mobs`);
     }
   } else {
-    // Build level gate banners on the track
-    gateRender.buildGates(sim.gates.getGates());
+    // Build level gate banners on the track (oriented to face camera yaw)
+    gateRender.buildGates(sim.gates.getGates(), camConfig.yaw);
   }
 
   // 7. Platform initialization & lifecycle listeners

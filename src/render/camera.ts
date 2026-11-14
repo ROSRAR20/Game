@@ -1,26 +1,51 @@
 import * as THREE from 'three';
-import { CONFIG } from '../config/constants';
+import { CameraConfig, getEffectiveCameraConfig } from '../config/constants';
 import { ViewportSize } from './viewport';
 
-export function createCamera(size: ViewportSize): THREE.PerspectiveCamera {
+/**
+ * Applies pitch, yaw, height and look-at target positioning to a PerspectiveCamera.
+ * Guarantees zero roll: camera.up remains strictly (0, 1, 0) so vertical lines remain vertical.
+ */
+export function applyCameraTuning(
+  camera: THREE.PerspectiveCamera,
+  cfg: CameraConfig
+): void {
+  camera.fov = cfg.fov;
+  camera.near = cfg.near;
+  camera.far = cfg.far;
+
+  const pitchRad = (cfg.pitch * Math.PI) / 180;
+  const yawRad = (cfg.yaw * Math.PI) / 180;
+
+  // View direction derived from pitch (downward from horizontal) and yaw (rotation around Y)
+  const dir = new THREE.Vector3(
+    Math.sin(yawRad) * Math.cos(pitchRad),
+    -Math.sin(pitchRad),
+    Math.cos(yawRad) * Math.cos(pitchRad)
+  );
+
+  camera.position.set(cfg.posX, cfg.height, cfg.posZ);
+  camera.up.set(0, 1, 0);
+
+  const target = camera.position.clone().add(dir.multiplyScalar(cfg.lookAtDistance));
+  camera.lookAt(target);
+
+  camera.updateMatrixWorld();
+  camera.updateProjectionMatrix();
+}
+
+export function createCamera(
+  size: ViewportSize,
+  cfg: CameraConfig = getEffectiveCameraConfig()
+): THREE.PerspectiveCamera {
   const camera = new THREE.PerspectiveCamera(
-    CONFIG.CAMERA_FOV,
+    cfg.fov,
     size.aspect,
-    CONFIG.CAMERA_NEAR,
-    CONFIG.CAMERA_FAR
+    cfg.near,
+    cfg.far
   );
 
-  camera.position.set(
-    CONFIG.CAMERA_OFFSET.x,
-    CONFIG.CAMERA_OFFSET.y,
-    CONFIG.CAMERA_OFFSET.z
-  );
-
-  camera.lookAt(
-    CONFIG.CAMERA_LOOK_AT.x,
-    CONFIG.CAMERA_LOOK_AT.y,
-    CONFIG.CAMERA_LOOK_AT.z
-  );
+  applyCameraTuning(camera, cfg);
 
   return camera;
 }

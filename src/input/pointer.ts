@@ -1,24 +1,57 @@
+import * as THREE from 'three';
 import { CONFIG } from '../config/constants';
 import { CannonSim } from '../sim/cannon';
+import {
+  Vector2D,
+  projectDragDelta,
+  computeWorldXPixelVector
+} from './drag_projection';
 
 export class InputManager {
   private cannon: CannonSim;
   private container: HTMLElement;
+  private camera: THREE.Camera;
+  private worldXPixelVector: Vector2D = { x: -35, y: 0 };
 
   private isDragging: boolean = false;
   private lastPointerX: number = 0;
+  private lastPointerY: number = 0;
   private activePointerId: number | null = null;
 
   // Keyboard keys active
   private keyLeft: boolean = false;
   private keyRight: boolean = false;
 
-  constructor(container: HTMLElement, cannon: CannonSim) {
+  constructor(
+    container: HTMLElement,
+    cannon: CannonSim,
+    camera: THREE.Camera
+  ) {
     this.container = container;
     this.cannon = cannon;
+    this.camera = camera;
 
+    this.updateProjectionAxis();
     this.attachPointerListeners();
     this.attachKeyboardListeners();
+  }
+
+  /**
+   * Recomputes the on-screen pixel vector of one world-X unit at the cannon's world position.
+   * Called on initial setup, on viewport resize, and whenever camera tuning parameters change.
+   */
+  public updateProjectionAxis(cam: THREE.Camera = this.camera): void {
+    this.camera = cam;
+    const rect = this.container.getBoundingClientRect();
+    const width = Math.max(1, rect.width);
+    const height = Math.max(1, rect.height);
+
+    this.worldXPixelVector = computeWorldXPixelVector(
+      this.camera,
+      { x: 0, y: 0, z: CONFIG.CANNON_Z },
+      width,
+      height
+    );
   }
 
   private attachPointerListeners(): void {
@@ -45,6 +78,7 @@ export class InputManager {
     this.activePointerId = e.pointerId;
     this.isDragging = true;
     this.lastPointerX = e.clientX;
+    this.lastPointerY = e.clientY;
 
     try {
       this.container.setPointerCapture(e.pointerId);
@@ -56,19 +90,17 @@ export class InputManager {
   private onPointerMove = (e: PointerEvent): void => {
     if (!this.isDragging || e.pointerId !== this.activePointerId) return;
 
-    const deltaPixelX = e.clientX - this.lastPointerX;
+    const deltaPixel: Vector2D = {
+      x: e.clientX - this.lastPointerX,
+      y: e.clientY - this.lastPointerY
+    };
     this.lastPointerX = e.clientX;
+    this.lastPointerY = e.clientY;
 
-    // Convert pixel delta to world units based on road width
-    const rect = this.container.getBoundingClientRect();
-    const containerWidth = Math.max(1, rect.width);
-    // Relative touch sensitivity factor (1.5x gives responsive feel on mobile)
-    const worldDeltaX = (deltaPixelX / containerWidth) * CONFIG.ROAD_WIDTH * 1.5;
-
-    // In Three.js right-handed camera looking along +Z:
-    // Screen Right corresponds to decreasing X in world space.
-    // Therefore, dragging right (deltaPixelX > 0) decreases world X to move right on screen.
-    this.cannon.addDeltaX(-worldDeltaX);
+    // Pure function projection: finger delta projected onto camera-derived world-X axis.
+    // Cannon follows the thumb along the diagonal on screen.
+    const deltaWorldX = projectDragDelta(deltaPixel, this.worldXPixelVector);
+    this.cannon.addDeltaX(deltaWorldX);
   };
 
   private onPointerUp = (e: PointerEvent): void => {

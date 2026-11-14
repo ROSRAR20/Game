@@ -68,14 +68,14 @@ test.describe('Milestone M1 Core Loop & Benchmarks', () => {
       gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
       // In WebGL texture coordinates, row 0 is bottom, row h-1 is top.
-      // Cannon sits at bottom (rows 0.15h to 0.25h).
-      // Road area ahead of cannon where mobs travel: rows 0.30h to 0.70h.
-      // Horizontal road width on screen: columns 0.25w to 0.75w.
+      // With diagonal camera perspective, the road runs from lower-left to upper-right.
+      // Road area ahead of cannon where mobs travel: rows 0.20h to 0.75h.
+      // Horizontal span covering the diagonal road: columns 0.15w to 0.95w.
       let count = 0;
-      const minRow = Math.floor(h * 0.30);
-      const maxRow = Math.floor(h * 0.70);
-      const minCol = Math.floor(w * 0.25);
-      const maxCol = Math.floor(w * 0.75);
+      const minRow = Math.floor(h * 0.20);
+      const maxRow = Math.floor(h * 0.75);
+      const minCol = Math.floor(w * 0.15);
+      const maxCol = Math.floor(w * 0.95);
 
       for (let row = minRow; row < maxRow; row++) {
         for (let col = minCol; col < maxCol; col++) {
