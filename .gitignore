@@ -15,6 +15,10 @@ android/capacitor-cordova-android-plugins/build/
 *.jks
 *.keystore
 
+# Reference assets (local only, never commit or ship)
+public/dev/
+dist/dev/
+
 # Test and report artifacts
 test-results/
 playwright-report/

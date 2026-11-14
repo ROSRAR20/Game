@@ -173,6 +173,16 @@ export class GateRenderer {
     }
   }
 
+  public updateYaw(cameraYawDeg: number): void {
+    const yawRad = (cameraYawDeg * Math.PI) / 180;
+    for (let i = 0; i < this.gateMeshes.length; i += 2) {
+      const banner = this.gateMeshes[i];
+      if (banner) {
+        banner.rotation.y = Math.PI + yawRad;
+      }
+    }
+  }
+
   public dispose(): void {
     for (const mesh of this.gateMeshes) {
       this.scene.remove(mesh);

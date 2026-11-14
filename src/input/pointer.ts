@@ -71,9 +71,16 @@ export class InputManager {
     // Single finger touch tracking
     if (this.activePointerId !== null) return;
 
-    // Do not initiate cannon drag if interacting with the debug overlay
+    // Do not initiate cannon drag if interacting with UI overlays (debug overlay, camera tuner, modals)
     const target = e.target as HTMLElement | null;
-    if (target && target.closest('#debug-overlay')) return;
+    if (
+      target &&
+      (target.closest('#debug-overlay') ||
+        target.closest('#cam-tuner-panel') ||
+        target.closest('#cam-qs-modal'))
+    ) {
+      return;
+    }
 
     this.activePointerId = e.pointerId;
     this.isDragging = true;

@@ -21,18 +21,24 @@ export const CONFIG = {
   MOB_HEIGHT: 0.6,
   MOB_MAX_Z: 105, // despawn threshold
 
-  // Camera tuning defaults (preset A is default; overridden by ?camPreset=a|b|c)
-  CAMERA_FOV: 52,
+  // Camera tuning defaults (preset A is default; overridden by ?camPreset=a|b|c or live tuner ?camTune)
+  CAMERA_FOV: 50,
   CAMERA_PITCH: 52, // degrees downward pitch from horizontal (50-60 range)
-  CAMERA_YAW: 20, // degrees horizontal yaw offset around Y (20-30 range)
-  CAMERA_HEIGHT: 42, // camera Y position
-  CAMERA_LOOK_AT_DISTANCE: 50, // distance along sightline to look-at target
-  CAMERA_POS_X: -10.0, // camera X position (placed to left of road looking right)
-  CAMERA_POS_Z: -7.0, // camera Z position
+  CAMERA_YAW: 15, // degrees horizontal yaw offset around Y
+  CAMERA_HEIGHT: 21, // camera Y elevation (close framing for large mob feel)
+  CAMERA_LOOK_AT_DISTANCE: 25, // distance along sightline to look-at target
+  CAMERA_POS_X: -4.8, // camera lateral offset to left of road
+  CAMERA_POS_Z: -4.0, // camera Z position
   CAMERA_NEAR: 0.1,
   CAMERA_FAR: 500,
-  CAMERA_OFFSET: { x: -10.0, y: 42, z: -7.0 },
-  CAMERA_LOOK_AT: { x: 0, y: 1.0, z: 25 },
+  CAMERA_OFFSET: { x: -4.8, y: 21, z: -4.0 },
+  CAMERA_LOOK_AT: { x: 0, y: 1.0, z: 20 },
+
+  // Horde carpet positioning (visible in top quarter of framed road)
+  HORDE_CARPET: {
+    START_Z: 30,
+    LENGTH: 35
+  },
 
   // Rendering & Performance budgets (Default DPR = 1.0 for this device class; fill rate constraint)
   DEFAULT_DPR: 1.0,
@@ -121,34 +127,34 @@ export interface CameraPresetConfig {
 
 export const CAMERA_PRESETS: Record<'a' | 'b' | 'c', CameraPresetConfig> = {
   a: {
-    name: 'Preset A (Moderate high-angle: pitch 52, yaw 20, fov 52)',
-    fov: 52,
+    name: 'Preset A (Close: yaw 15, pitch 52, fov 50, height 21, span ~38.6)',
+    fov: 50,
     pitch: 52,
-    yaw: 20,
-    height: 42,
-    lookAtDistance: 50,
-    posX: -10.0,
-    posZ: -7.0
+    yaw: 15,
+    height: 21,
+    lookAtDistance: 25,
+    posX: -4.8,
+    posZ: -4.0
   },
   b: {
-    name: 'Preset B (Steep high-angle: pitch 55, yaw 22, fov 53)',
-    fov: 53,
+    name: 'Preset B (Medium: yaw 25, pitch 55, fov 52, height 28, span ~49.1)',
+    fov: 52,
     pitch: 55,
-    yaw: 22,
-    height: 44,
-    lookAtDistance: 50,
-    posX: -9.5,
-    posZ: -6.0
+    yaw: 25,
+    height: 28,
+    lookAtDistance: 30,
+    posX: -8.0,
+    posZ: -3.5
   },
   c: {
-    name: 'Preset C (Maximum steep high-angle: pitch 58, yaw 24, fov 55)',
-    fov: 55,
-    pitch: 58,
-    yaw: 24,
-    height: 45,
-    lookAtDistance: 50,
-    posX: -9.0,
-    posZ: -5.0
+    name: 'Preset C (Far / Wide: yaw 35, pitch 56, fov 54, height 38, span ~66.4)',
+    fov: 54,
+    pitch: 56,
+    yaw: 35,
+    height: 38,
+    lookAtDistance: 40,
+    posX: -11.0,
+    posZ: -3.0
   }
 };
 

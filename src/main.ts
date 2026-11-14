@@ -12,6 +12,9 @@ import { AdaptiveQualityManager } from './render/adaptive';
 import { Simulation } from './sim/loop';
 import { InputManager } from './input/pointer';
 import { DebugOverlay } from './ui/debug';
+import { CameraTunerPanel } from './ui/cam_tuner';
+import { initRefOverlay } from './ui/ref_overlay';
+import { computeFrustumGroundRange } from './render/frustum';
 import { PlatformLifecycle, configureDisplay } from './platform';
 
 function init(): void {
@@ -71,6 +74,17 @@ function init(): void {
   const cannonRender = new CannonRender(scene, sim.cannon);
   const mobRender = new MobRenderer(scene);
   const gateRender = new GateRenderer(scene);
+
+  // Initialize reference image overlay (?refOverlay=1)
+  initRefOverlay();
+
+  // Initialize live camera tuner panel (?camTune)
+  new CameraTunerPanel(camera, camConfig, (updatedCfg) => {
+    input.updateProjectionAxis(camera);
+    gateRender.updateYaw(updatedCfg.yaw);
+    const range = computeFrustumGroundRange(camera);
+    debug.updateGroundRange(range);
+  });
 
   let bareStress: BareStressTest | null = null;
 
@@ -139,7 +153,8 @@ function init(): void {
     const getVisible = () =>
       bareStress ? bareStress.count : mobRender.countVisibleUnits(camera, sim.pool);
 
-    debug.update(now, activeUnits, getVisible, renderer, viewport.getSize().dpr);
+    const groundRange = computeFrustumGroundRange(camera);
+    debug.update(now, activeUnits, getVisible, renderer, viewport.getSize().dpr, groundRange);
   }
 
   requestAnimationFrame(animate);

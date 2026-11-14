@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { FrustumGroundRange } from '../render/frustum';
 
 export interface DebugMetrics {
   fps: number;
@@ -21,6 +22,7 @@ export class DebugOverlay {
   private drawsEl: HTMLElement | null = null;
   private trisEl: HTMLElement | null = null;
   private dprEl: HTMLElement | null = null;
+  private zRangeEl: HTMLElement | null = null;
 
   // Frame timing
   private lastTime: number = performance.now();
@@ -60,6 +62,7 @@ export class DebugOverlay {
     this.drawsEl = document.getElementById('dbg-draws');
     this.trisEl = document.getElementById('dbg-tris');
     this.dprEl = document.getElementById('dbg-dpr');
+    this.zRangeEl = document.getElementById('dbg-zrange');
 
     if (this.overlayEl && this.isVisible) {
       this.overlayEl.style.display = 'block';
@@ -114,12 +117,20 @@ export class DebugOverlay {
     }
   }
 
+  public updateGroundRange(range: FrustumGroundRange): void {
+    if (this.zRangeEl) {
+      const farStr = range.farZ === Infinity ? 'Inf' : range.farZ.toFixed(1);
+      this.zRangeEl.textContent = `${range.nearZ.toFixed(1)} to ${farStr}`;
+    }
+  }
+
   public update(
     now: number,
     activeUnits: number,
     getVisibleUnits: () => number,
     renderer: THREE.WebGLRenderer,
-    dpr: number
+    dpr: number,
+    groundRange?: FrustumGroundRange
   ): void {
     const delta = now - this.lastTime;
     this.frameCount++;
@@ -140,6 +151,9 @@ export class DebugOverlay {
         if (this.drawsEl) this.drawsEl.textContent = String(renderer.info.render.calls);
         if (this.trisEl) this.trisEl.textContent = String(renderer.info.render.triangles);
         if (this.dprEl) this.dprEl.textContent = String(dpr.toFixed(1));
+        if (groundRange) {
+          this.updateGroundRange(groundRange);
+        }
       }
     }
   }

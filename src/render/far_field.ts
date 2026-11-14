@@ -18,15 +18,15 @@ export class FarFieldHorde {
     this.texture.wrapS = THREE.RepeatWrapping;
     this.texture.wrapT = THREE.RepeatWrapping;
     // Repeat across road width and along the horde carpet length
-    this.texture.repeat.set(4, 6);
+    this.texture.repeat.set(4, 10);
     this.texture.generateMipmaps = true;
     this.texture.minFilter = THREE.LinearMipmapLinearFilter;
     this.texture.magFilter = THREE.LinearFilter;
 
-    // Carpet positioned within the framed Z=0..45 area (spanning Z from 42 to 62)
-    // Exactly matches road width (12 units), no wider than the road
-    const hordeStartZ = 42;
-    const hordeLength = 20;
+    // Carpet positioned within the top quarter of the framed road area
+    // Spans Z from 30 to 65. Exactly matches road width (12 units), no wider than the road.
+    const hordeStartZ = CONFIG.HORDE_CARPET.START_Z;
+    const hordeLength = CONFIG.HORDE_CARPET.LENGTH;
     this.geometry = new THREE.PlaneGeometry(CONFIG.ROAD_WIDTH, hordeLength, 1, 1);
     this.geometry.rotateX(-Math.PI / 2);
     this.geometry.translate(0, 0.005, hordeStartZ + hordeLength / 2);
