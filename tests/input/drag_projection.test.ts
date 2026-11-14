@@ -84,17 +84,17 @@ describe('World-X Pixel Vector Derivation (computeWorldXPixelVector)', () => {
     const ref = { x: 0, y: 0, z: 5 };
     const vec = computeWorldXPixelVector(camera, ref, 390, 844);
 
-    // In Three.js looking down +Z, world +X projects to the screen left (vec.x < 0)
+    // In Three.js looking down +Z, world +X projects to screen left (vec.x < 0)
     expect(vec.x).toBeLessThan(0);
     expect(vec.y).toBeCloseTo(0, 1);
 
-    // Finger moving along vec gives exactly +1.0 world X
+    // Moving along vec by its length gives +1.0
     expect(projectDragDelta(vec, vec)).toBeCloseTo(1.0, 5);
 
-    // Finger moving opposite gives -1.0 world X
+    // Moving opposite gives -1.0
     expect(projectDragDelta({ x: -vec.x, y: -vec.y }, vec)).toBeCloseTo(-1.0, 5);
 
-    // Finger moving perpendicular gives 0.0 world X
+    // Moving perpendicular gives 0.0
     expect(projectDragDelta({ x: -vec.y, y: vec.x }, vec)).toBeCloseTo(0.0, 5);
   });
 
@@ -113,4 +113,40 @@ describe('World-X Pixel Vector Derivation (computeWorldXPixelVector)', () => {
     expect(vec.x).not.toBe(0);
     expect(vec.y).not.toBe(0);
   });
+
+  it('verifies that drag projection follows the thumb across camera Presets A, B, and C', () => {
+    const presets = [
+      { name: 'Preset A', pos: [-10, 42, -7], pitch: 52, yaw: 20, fov: 52 },
+      { name: 'Preset B', pos: [-9.5, 44, -6], pitch: 55, yaw: 22, fov: 53 },
+      { name: 'Preset C', pos: [-9, 45, -5], pitch: 58, yaw: 24, fov: 55 }
+    ];
+
+    for (const p of presets) {
+      const camera = new THREE.PerspectiveCamera(p.fov, 390 / 844, 0.1, 500);
+      camera.position.set(p.pos[0]!, p.pos[1]!, p.pos[2]!);
+      const pitchRad = (p.pitch * Math.PI) / 180;
+      const yawRad = (p.yaw * Math.PI) / 180;
+      const dir = new THREE.Vector3(
+        Math.sin(yawRad) * Math.cos(pitchRad),
+        -Math.sin(pitchRad),
+        Math.cos(yawRad) * Math.cos(pitchRad)
+      );
+      camera.up.set(0, 1, 0);
+      camera.lookAt(camera.position.clone().add(dir.clone().multiplyScalar(50)));
+      camera.updateMatrixWorld();
+      camera.updateProjectionMatrix();
+
+      const u = computeWorldXPixelVector(camera, { x: 0, y: 0, z: 5 }, 390, 844);
+
+      // Drag along diagonal axis u by its length yields exactly +1.0 world units
+      expect(projectDragDelta(u, u)).toBeCloseTo(1.0, 5);
+
+      // Drag opposite to u yields -1.0 world units
+      expect(projectDragDelta({ x: -u.x, y: -u.y }, u)).toBeCloseTo(-1.0, 5);
+
+      // Drag perpendicular yields 0.0
+      expect(projectDragDelta({ x: -u.y, y: u.x }, u)).toBeCloseTo(0.0, 5);
+    }
+  });
 });
+

@@ -17,17 +17,19 @@ export class FarFieldHorde {
     this.texture = FarFieldHorde.createHordeTexture();
     this.texture.wrapS = THREE.RepeatWrapping;
     this.texture.wrapT = THREE.RepeatWrapping;
-    // Repeat across road width and along the 50-unit length
-    this.texture.repeat.set(4, 16);
+    // Repeat across road width and along the horde carpet length
+    this.texture.repeat.set(4, 6);
     this.texture.generateMipmaps = true;
     this.texture.minFilter = THREE.LinearMipmapLinearFilter;
     this.texture.magFilter = THREE.LinearFilter;
 
-    const hordeLength = 50;
+    // Carpet positioned within the framed Z=0..45 area (spanning Z from 42 to 62)
+    // Exactly matches road width (12 units), no wider than the road
+    const hordeStartZ = 42;
+    const hordeLength = 20;
     this.geometry = new THREE.PlaneGeometry(CONFIG.ROAD_WIDTH, hordeLength, 1, 1);
     this.geometry.rotateX(-Math.PI / 2);
-    // Position quad to start at Z = 100 and end at Z = 150
-    this.geometry.translate(0, 0.005, 100 + hordeLength / 2);
+    this.geometry.translate(0, 0.005, hordeStartZ + hordeLength / 2);
 
     this.material = new THREE.MeshBasicMaterial({
       map: this.texture,
@@ -40,51 +42,70 @@ export class FarFieldHorde {
   }
 
   /**
-   * Generates a small 128x128 procedural silhouette texture representing
-   * a dense crowd of red mob heads/helmets. Strictly opaque.
+   * Generates a high-contrast 256x256 procedural silhouette texture representing
+   * a dense crowd of red mob heads/helmets with glowing eyes and rim highlights.
+   * Reads clearly as an organic swarm crowd rather than a flat slab. Strictly opaque.
    */
   private static createHordeTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 128;
+    canvas.width = 256;
+    canvas.height = 256;
     const ctx = canvas.getContext('2d');
 
     if (!ctx) {
       return new THREE.CanvasTexture(canvas);
     }
 
-    // Base dark crimson road/ground fill
-    ctx.fillStyle = '#450a0a';
-    ctx.fillRect(0, 0, 128, 128);
+    // Deep dark crimson asphalt/ground
+    ctx.fillStyle = '#1e0505';
+    ctx.fillRect(0, 0, 256, 256);
 
-    // Staggered pattern of red mob silhouettes
+    // Staggered rows of dense red mob heads and silhouettes
     const rows = 8;
     const cols = 8;
-    const xStep = 128 / cols;
-    const yStep = 128 / rows;
+    const xStep = 256 / cols;
+    const yStep = 256 / rows;
 
     for (let r = 0; r < rows; r++) {
       const xOffset = (r % 2) * (xStep / 2);
       for (let c = 0; c < cols; c++) {
-        const cx = (c * xStep + xOffset + 4) % 128;
-        const cy = r * yStep + 4;
+        const cx = (c * xStep + xOffset + xStep / 2) % 256;
+        const cy = r * yStep + yStep / 2;
 
-        // Outer red mob helmet/head
+        // Dark ground contact shadow
+        ctx.fillStyle = '#0a0101';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 8, 10, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Mob shoulders / body base
+        ctx.fillStyle = '#7f1d1d';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 5, 9, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Round red mob helmet / head
         ctx.fillStyle = '#dc2626';
         ctx.beginPath();
-        ctx.arc(cx, cy, 5.5, 0, Math.PI * 2);
+        ctx.arc(cx, cy - 2, 8, 0, Math.PI * 2);
         ctx.fill();
 
-        // Inner highlight
-        ctx.fillStyle = '#f87171';
+        // Dark helmet edge / contour
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#450a0a';
+        ctx.stroke();
+
+        // Bright top specular highlight on helmet
+        ctx.fillStyle = '#fca5a5';
         ctx.beginPath();
-        ctx.arc(cx - 1, cy - 1, 3, 0, Math.PI * 2);
+        ctx.arc(cx - 2, cy - 5, 3.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Dark helmet shadow
-        ctx.fillStyle = '#991b1b';
+        // Glowing hostile eyes (yellow-white slits)
+        ctx.fillStyle = '#fef08a';
         ctx.beginPath();
-        ctx.arc(cx + 1, cy + 2, 2, 0, Math.PI * 2);
+        ctx.arc(cx - 3, cy - 1, 1.5, 0, Math.PI * 2);
+        ctx.arc(cx + 3, cy - 1, 1.5, 0, Math.PI * 2);
         ctx.fill();
       }
     }

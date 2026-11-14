@@ -21,18 +21,18 @@ export const CONFIG = {
   MOB_HEIGHT: 0.6,
   MOB_MAX_Z: 105, // despawn threshold
 
-  // Camera tuning (elevated diagonal perspective, framing cannon + gates + far-field horde)
-  CAMERA_FOV: 48,
-  CAMERA_PITCH: 26, // degrees downward pitch from horizontal
-  CAMERA_YAW: 10, // degrees horizontal yaw offset around Y
-  CAMERA_HEIGHT: 22, // camera Y position
-  CAMERA_LOOK_AT_DISTANCE: 30, // distance along sightline to look-at target
-  CAMERA_POS_X: -4.0, // camera X position
-  CAMERA_POS_Z: -15.0, // camera Z position
+  // Camera tuning defaults (preset A is default; overridden by ?camPreset=a|b|c)
+  CAMERA_FOV: 52,
+  CAMERA_PITCH: 52, // degrees downward pitch from horizontal (50-60 range)
+  CAMERA_YAW: 20, // degrees horizontal yaw offset around Y (20-30 range)
+  CAMERA_HEIGHT: 42, // camera Y position
+  CAMERA_LOOK_AT_DISTANCE: 50, // distance along sightline to look-at target
+  CAMERA_POS_X: -10.0, // camera X position (placed to left of road looking right)
+  CAMERA_POS_Z: -7.0, // camera Z position
   CAMERA_NEAR: 0.1,
   CAMERA_FAR: 500,
-  CAMERA_OFFSET: { x: -4.0, y: 22, z: -15.0 },
-  CAMERA_LOOK_AT: { x: 0, y: 1.0, z: 20 },
+  CAMERA_OFFSET: { x: -10.0, y: 42, z: -7.0 },
+  CAMERA_LOOK_AT: { x: 0, y: 1.0, z: 25 },
 
   // Rendering & Performance budgets (Default DPR = 1.0 for this device class; fill rate constraint)
   DEFAULT_DPR: 1.0,
@@ -108,25 +108,80 @@ export interface CameraConfig {
   far: number;
 }
 
+export interface CameraPresetConfig {
+  name: string;
+  fov: number;
+  pitch: number;
+  yaw: number;
+  height: number;
+  lookAtDistance: number;
+  posX: number;
+  posZ: number;
+}
+
+export const CAMERA_PRESETS: Record<'a' | 'b' | 'c', CameraPresetConfig> = {
+  a: {
+    name: 'Preset A (Moderate high-angle: pitch 52, yaw 20, fov 52)',
+    fov: 52,
+    pitch: 52,
+    yaw: 20,
+    height: 42,
+    lookAtDistance: 50,
+    posX: -10.0,
+    posZ: -7.0
+  },
+  b: {
+    name: 'Preset B (Steep high-angle: pitch 55, yaw 22, fov 53)',
+    fov: 53,
+    pitch: 55,
+    yaw: 22,
+    height: 44,
+    lookAtDistance: 50,
+    posX: -9.5,
+    posZ: -6.0
+  },
+  c: {
+    name: 'Preset C (Maximum steep high-angle: pitch 58, yaw 24, fov 55)',
+    fov: 55,
+    pitch: 58,
+    yaw: 24,
+    height: 45,
+    lookAtDistance: 50,
+    posX: -9.0,
+    posZ: -5.0
+  }
+};
+
 /**
- * Returns effective camera configuration, parsing URL query parameters for tuning overrides
- * (?camPitch=, ?camYaw=, ?camFov=, ?camHeight=, ?camLookAtDistance=, ?camX=, ?camZ=).
+ * Returns effective camera configuration, parsing URL query parameters for presets (?camPreset=a|b|c)
+ * and individual tuning overrides (?camPitch=, ?camYaw=, ?camFov=, ?camHeight=, ?camLookAtDistance=, ?camX=, ?camZ=).
  */
-export function getEffectiveCameraConfig(): CameraConfig {
+export function getEffectiveCameraConfig(): CameraConfig & { preset: 'a' | 'b' | 'c' } {
+  let presetKey: 'a' | 'b' | 'c' = 'a';
+
+  if (typeof window !== 'undefined' && window.location) {
+    const params = new URLSearchParams(window.location.search);
+    const p = params.get('camPreset')?.toLowerCase();
+    if (p === 'b' || p === 'c') {
+      presetKey = p;
+    }
+  }
+
+  const base = CAMERA_PRESETS[presetKey];
   const defaults: CameraConfig = {
-    fov: CONFIG.CAMERA_FOV,
-    pitch: CONFIG.CAMERA_PITCH,
-    yaw: CONFIG.CAMERA_YAW,
-    height: CONFIG.CAMERA_HEIGHT,
-    lookAtDistance: CONFIG.CAMERA_LOOK_AT_DISTANCE,
-    posX: CONFIG.CAMERA_POS_X,
-    posZ: CONFIG.CAMERA_POS_Z,
+    fov: base.fov,
+    pitch: base.pitch,
+    yaw: base.yaw,
+    height: base.height,
+    lookAtDistance: base.lookAtDistance,
+    posX: base.posX,
+    posZ: base.posZ,
     near: CONFIG.CAMERA_NEAR,
     far: CONFIG.CAMERA_FAR
   };
 
   if (typeof window === 'undefined' || !window.location) {
-    return defaults;
+    return { ...defaults, preset: presetKey };
   }
 
   const params = new URLSearchParams(window.location.search);
@@ -147,6 +202,7 @@ export function getEffectiveCameraConfig(): CameraConfig {
     posX: parseParam('camX', defaults.posX),
     posZ: parseParam('camZ', defaults.posZ),
     near: defaults.near,
-    far: defaults.far
+    far: defaults.far,
+    preset: presetKey
   };
 }
