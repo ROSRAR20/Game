@@ -155,6 +155,14 @@ export class GateManager {
     return this.gates;
   }
 
+  public reset(): void {
+    this.cloneBuffer.clear();
+    this.divCounter.clear();
+    for (const gate of this.gates) {
+      gate.remainingValue = gate.value;
+    }
+  }
+
   /**
    * Main gate step: tests all active mobs against gates and steps the clone buffer.
    */

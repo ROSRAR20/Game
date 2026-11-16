@@ -44,6 +44,14 @@ describe('Zero Allocations in Simulation Loop', () => {
     }
     expect(sim.pool.count).toBe(500);
 
+    // Keep track of typed array identities before stepping
+    const xBuffer = sim.pool.x;
+    const zBuffer = sim.pool.z;
+    const vxBuffer = sim.pool.vx;
+    const vzBuffer = sim.pool.vz;
+    const weightBuffer = sim.pool.weight;
+    const activeIndicesBuffer = sim.pool.activeIndices;
+
     // Run 1,000 simulation steps
     for (let i = 0; i < 1000; i++) {
       sim.step(1 / 60);
@@ -52,5 +60,13 @@ describe('Zero Allocations in Simulation Loop', () => {
     // Still exactly 500 active units and pool integrity preserved
     expect(sim.pool.count).toBe(500);
     expect(sim.pool.freeCount).toBe(500);
+
+    // Assert typed arrays keep exact identity (no buffer re-allocations or growth)
+    expect(sim.pool.x).toBe(xBuffer);
+    expect(sim.pool.z).toBe(zBuffer);
+    expect(sim.pool.vx).toBe(vxBuffer);
+    expect(sim.pool.vz).toBe(vzBuffer);
+    expect(sim.pool.weight).toBe(weightBuffer);
+    expect(sim.pool.activeIndices).toBe(activeIndicesBuffer);
   });
 });

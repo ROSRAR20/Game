@@ -55,4 +55,61 @@ describe('Fixed-Timestep Simulation Loop', () => {
       expect(sim1.pool.z[s1]).toBe(sim2.pool.z[s2]);
     }
   });
+
+  it('resolves base breaches and Game Over in the simulation loop', () => {
+    const sim = new Simulation(42);
+    sim.cannon.fireInterval = 9999; // isolate from cannon
+
+    // Spawn 10 enemy red units right at the base line with weight 10 each = 100 damage
+    for (let i = 0; i < 10; i++) {
+      spawnMob(sim.pool, 0, 0.1, 0, -5, 1, 0, 1, 1, 10);
+    }
+
+    expect(sim.base.hp).toBe(100);
+    expect(sim.base.isGameOver).toBe(false);
+
+    // Step 1 tick (moves Z past 0)
+    sim.step(1 / 60);
+
+    expect(sim.base.hp).toBe(0);
+    expect(sim.base.isGameOver).toBe(true);
+
+    // Subsequent steps freeze simulation
+    const cannonXBefore = sim.cannon.x;
+    sim.step(1 / 60);
+    expect(sim.cannon.x).toBe(cannonXBefore);
+  });
+
+  it('is bit-for-bit identical after restart() compared to a fresh run', () => {
+    const seed = 777;
+    const simFresh = new Simulation(seed);
+    const simRestarted = new Simulation(seed);
+
+    // Run simRestarted for 120 ticks, then damage base
+    for (let i = 0; i < 120; i++) {
+      simRestarted.step(1 / 60);
+    }
+    simRestarted.base.takeDamage(50);
+
+    // Restart simRestarted
+    simRestarted.restart(seed);
+
+    // Step both for 180 ticks
+    for (let i = 0; i < 180; i++) {
+      simFresh.step(1 / 60);
+      simRestarted.step(1 / 60);
+    }
+
+    expect(simRestarted.base.hp).toBe(simFresh.base.hp);
+    expect(simRestarted.cannon.x).toBe(simFresh.cannon.x);
+    expect(simRestarted.pool.count).toBe(simFresh.pool.count);
+
+    for (let i = 0; i < simFresh.pool.count; i++) {
+      const sFresh = simFresh.pool.activeIndices[i];
+      const sRestart = simRestarted.pool.activeIndices[i];
+      expect(simRestarted.pool.x[sRestart]).toBe(simFresh.pool.x[sFresh]);
+      expect(simRestarted.pool.z[sRestart]).toBe(simFresh.pool.z[sFresh]);
+      expect(simRestarted.pool.weight[sRestart]).toBe(simFresh.pool.weight[sFresh]);
+    }
+  });
 });

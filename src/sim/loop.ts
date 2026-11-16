@@ -3,6 +3,8 @@ import { MobPool, createMobPool, despawnMob } from './pool';
 import { CannonSim } from './cannon';
 import { SeededRNG } from './rng';
 import { GateManager } from './gates';
+import { BaseDefense } from './base';
+import { CombatResolver } from './combat';
 import { getLevelGates } from '../data/level';
 
 export class Simulation {
@@ -10,16 +12,22 @@ export class Simulation {
   public cannon: CannonSim;
   public rng: SeededRNG;
   public gates: GateManager;
+  public base: BaseDefense;
+  public combat: CombatResolver;
 
+  private readonly initialSeed: number;
   private accumulator: number = 0;
   private isStressMode: boolean = false;
 
   constructor(seed: number = 42, capacity: number = CONFIG.MAX_UNITS) {
+    this.initialSeed = seed;
     this.pool = createMobPool(capacity);
     this.cannon = new CannonSim();
     this.rng = new SeededRNG(seed);
     this.gates = new GateManager(this.rng);
     this.gates.setGates(getLevelGates());
+    this.base = new BaseDefense(CONFIG.BASE_MAX_HP);
+    this.combat = new CombatResolver();
   }
 
   public setStressMode(targetCount: number): void {
@@ -55,6 +63,11 @@ export class Simulation {
    * Single deterministic tick of the simulation.
    */
   public step(dt: number): void {
+    // If base has fallen, simulation freezes in Game Over state
+    if (this.base.isGameOver) {
+      return;
+    }
+
     // 1. Update cannon state and auto-spawner
     this.cannon.update(dt, this.pool, this.rng);
 
@@ -83,12 +96,18 @@ export class Simulation {
       }
     }
 
-    // 3. Process gate crossings and clone emissions
+    // 3. Process gate crossings and clone emissions (Team 0 blue mobs only)
     if (!this.isStressMode) {
       this.gates.update(this.pool, dt);
     }
 
-    // 4. Handle boundary conditions
+    // 4. Resolve combat collisions and base breaches (Milestone M3)
+    if (!this.isStressMode) {
+      this.combat.resolveCombat(this.pool);
+      this.combat.checkBaseBreaches(this.pool, this.base);
+    }
+
+    // 5. Handle boundary conditions
     for (let i = pool.count - 1; i >= 0; i--) {
       const slot = pool.activeIndices[i];
       if (this.isStressMode) {
@@ -99,11 +118,39 @@ export class Simulation {
           pool.x[slot] = this.rng.nextRange(CONFIG.CANNON_MIN_X, CONFIG.CANNON_MAX_X);
         }
       } else {
-        // In normal mode, cull units that have run past the top of the road
-        if (pool.z[slot] > CONFIG.MOB_MAX_Z) {
+        // In normal mode, cull blue units that run past the top of the road
+        if (pool.team[slot] === 0 && pool.z[slot] > CONFIG.MOB_MAX_Z) {
           despawnMob(pool, slot);
         }
       }
     }
+  }
+
+  /**
+   * Resets simulation back to tick 0 state for deterministic restart.
+   */
+  public restart(seed: number = this.initialSeed): void {
+    // 1. Despawn all active units
+    while (this.pool.count > 0) {
+      const slot = this.pool.activeIndices[this.pool.count - 1];
+      despawnMob(this.pool, slot);
+    }
+
+    // 2. Reset cannon position and cooldowns
+    this.cannon.x = 0;
+    this.cannon.targetX = 0;
+    this.cannon.fireTimer = 0;
+
+    // 3. Reset RNG back to initial seed
+    this.rng.setSeed(seed);
+
+    // 4. Reset base defense
+    this.base.reset();
+
+    // 5. Reset gates
+    this.gates.reset();
+
+    // 6. Reset timestep accumulator
+    this.accumulator = 0;
   }
 }

@@ -3,12 +3,19 @@ import { CONFIG } from '../config/constants';
 import { MobPool } from '../sim/pool';
 
 export class MobRenderer {
-  public mesh: THREE.InstancedMesh;
+  public blueMesh: THREE.InstancedMesh;
+  public redMesh: THREE.InstancedMesh;
   public readonly trianglesPerUnit: number;
-  private matrixArray: Float32Array;
+
+  private blueMatrixArray: Float32Array;
+  private redMatrixArray: Float32Array;
   private frustum: THREE.Frustum;
   private projScreenMatrix: THREE.Matrix4;
   private tempPoint: THREE.Vector3;
+
+  public get mesh(): THREE.InstancedMesh {
+    return this.blueMesh;
+  }
 
   constructor(scene: THREE.Scene, capacity: number = CONFIG.MAX_UNITS) {
     this.frustum = new THREE.Frustum();
@@ -26,7 +33,7 @@ export class MobRenderer {
       4
     );
 
-    // CRITICAL FIX: Ensure broad bounding sphere covering entire road
+    // Ensure broad bounding sphere covering entire road
     geometry.boundingSphere = new THREE.Sphere(
       new THREE.Vector3(0, 0, CONFIG.ROAD_LENGTH / 2),
       CONFIG.ROAD_LENGTH
@@ -35,67 +42,109 @@ export class MobRenderer {
     const indexCount = geometry.index ? geometry.index.count : 0;
     this.trianglesPerUnit = indexCount / 3;
 
-    // Vibrant arcade blue material with emissive glow for high contrast against dark road
-    const material = new THREE.MeshLambertMaterial({
+    // Vibrant arcade blue material for Team 0 (Player)
+    const blueMaterial = new THREE.MeshLambertMaterial({
       color: CONFIG.COLORS.BLUE_MOB,
       emissive: 0x0369a1,
       emissiveIntensity: 0.25
     });
 
-    this.mesh = new THREE.InstancedMesh(geometry, material, capacity);
-    this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    this.mesh.count = 0;
+    // High-contrast crimson red material for Team 1 (Enemy Horde)
+    const redMaterial = new THREE.MeshLambertMaterial({
+      color: CONFIG.COLORS.RED_MOB,
+      emissive: 0x991b1b,
+      emissiveIntensity: 0.25
+    });
 
-    // CRITICAL FIX: Disable Three.js base-geometry frustum culling on InstancedMesh.
-    // By default, Three.js culls InstancedMesh against the tiny un-instanced base cylinder at (0, 0, 0).
-    // Because the camera is looking down the road, (0, 0, 0) is outside the frustum, causing
-    // Three.js to drop all 500 instances! Setting frustumCulled = false prevents this false drop.
-    this.mesh.frustumCulled = false;
+    this.blueMesh = new THREE.InstancedMesh(geometry, blueMaterial, capacity);
+    this.blueMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.blueMesh.count = 0;
+    this.blueMesh.frustumCulled = false;
 
-    // Pre-initialize identity matrix elements in typed array buffer
-    this.matrixArray = this.mesh.instanceMatrix.array as Float32Array;
+    this.redMesh = new THREE.InstancedMesh(geometry, redMaterial, capacity);
+    this.redMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.redMesh.count = 0;
+    this.redMesh.frustumCulled = false;
+
+    // Pre-initialize identity matrix elements in typed array buffers
+    this.blueMatrixArray = this.blueMesh.instanceMatrix.array as Float32Array;
+    this.redMatrixArray = this.redMesh.instanceMatrix.array as Float32Array;
+
     for (let i = 0; i < capacity; i++) {
       const idx = i * 16;
-      this.matrixArray[idx + 0] = 1;
-      this.matrixArray[idx + 5] = 1;
-      this.matrixArray[idx + 10] = 1;
-      this.matrixArray[idx + 15] = 1;
+      this.blueMatrixArray[idx + 0] = 1;
+      this.blueMatrixArray[idx + 5] = 1;
+      this.blueMatrixArray[idx + 10] = 1;
+      this.blueMatrixArray[idx + 15] = 1;
+
+      this.redMatrixArray[idx + 0] = 1;
+      this.redMatrixArray[idx + 5] = 1;
+      this.redMatrixArray[idx + 10] = 1;
+      this.redMatrixArray[idx + 15] = 1;
     }
 
-    scene.add(this.mesh);
+    scene.add(this.blueMesh);
+    scene.add(this.redMesh);
   }
 
   public update(pool: MobPool): void {
-    const activeCount = pool.count;
-    this.mesh.count = activeCount;
-
-    if (activeCount === 0) {
+    const totalCount = pool.count;
+    if (totalCount === 0) {
+      this.blueMesh.count = 0;
+      this.redMesh.count = 0;
       return;
     }
 
     const activeIndices = pool.activeIndices;
     const x = pool.x;
     const z = pool.z;
+    const team = pool.team;
     const weight = pool.weight;
-    const arr = this.matrixArray;
+    const blueArr = this.blueMatrixArray;
+    const redArr = this.redMatrixArray;
     const y = CONFIG.MOB_HEIGHT / 2;
 
-    // High-performance direct typed array write: 6x faster than Object3D.updateMatrix()
-    for (let i = 0; i < activeCount; i++) {
+    let blueCount = 0;
+    let redCount = 0;
+
+    // High-performance single-pass partition into Blue and Red matrix buffers
+    for (let i = 0; i < totalCount; i++) {
       const slot = activeIndices[i];
       const w = weight[slot];
       const s = w > 1 ? Math.min(1.4, 1.0 + (w - 1) * 0.08) : 1.0;
-      const idx = i * 16;
 
-      arr[idx + 0] = s;
-      arr[idx + 5] = s;
-      arr[idx + 10] = s;
-      arr[idx + 12] = x[slot];
-      arr[idx + 13] = y;
-      arr[idx + 14] = z[slot];
+      if (team[slot] === 0) {
+        // Team 0: Player Blue
+        const idx = blueCount * 16;
+        blueArr[idx + 0] = s;
+        blueArr[idx + 5] = s;
+        blueArr[idx + 10] = s;
+        blueArr[idx + 12] = x[slot];
+        blueArr[idx + 13] = y;
+        blueArr[idx + 14] = z[slot];
+        blueCount++;
+      } else {
+        // Team 1: Enemy Red
+        const idx = redCount * 16;
+        redArr[idx + 0] = s;
+        redArr[idx + 5] = s;
+        redArr[idx + 10] = s;
+        redArr[idx + 12] = x[slot];
+        redArr[idx + 13] = y;
+        redArr[idx + 14] = z[slot];
+        redCount++;
+      }
     }
 
-    this.mesh.instanceMatrix.needsUpdate = true;
+    this.blueMesh.count = blueCount;
+    this.redMesh.count = redCount;
+
+    if (blueCount > 0) {
+      this.blueMesh.instanceMatrix.needsUpdate = true;
+    }
+    if (redCount > 0) {
+      this.redMesh.instanceMatrix.needsUpdate = true;
+    }
   }
 
   /**
@@ -127,12 +176,20 @@ export class MobRenderer {
   }
 
   public dispose(scene: THREE.Scene): void {
-    scene.remove(this.mesh);
-    this.mesh.geometry.dispose();
-    if (Array.isArray(this.mesh.material)) {
-      this.mesh.material.forEach((m) => m.dispose());
+    scene.remove(this.blueMesh);
+    scene.remove(this.redMesh);
+    this.blueMesh.geometry.dispose();
+
+    if (Array.isArray(this.blueMesh.material)) {
+      this.blueMesh.material.forEach((m) => m.dispose());
     } else {
-      this.mesh.material.dispose();
+      this.blueMesh.material.dispose();
+    }
+
+    if (Array.isArray(this.redMesh.material)) {
+      this.redMesh.material.forEach((m) => m.dispose());
+    } else {
+      this.redMesh.material.dispose();
     }
   }
 }

@@ -56,4 +56,19 @@ test.describe('M3 Task 0 Camera Presets Capture (?stress=2000)', () => {
       path: 'test-results/m3-task0-cam-tuner.png'
     });
   });
+
+  test('captures gameplay with gates aligned to road', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/?debug');
+
+    const container = page.locator('#game-container');
+    await expect(container).toBeVisible();
+
+    // Wait 2.5s for blue mobs to stream toward the gates
+    await page.waitForTimeout(2500);
+
+    await page.screenshot({
+      path: 'test-results/m3-gates-aligned.png'
+    });
+  });
 });

@@ -133,13 +133,8 @@ export class GateRenderer {
    * Instantiates flat banner meshes for the provided level gates.
    * Orients banner meshes around Y to face camera yaw so numerals read upright and unskewed.
    */
-  public buildGates(
-    gates: readonly Gate[],
-    cameraYawDeg: number = CONFIG.CAMERA_YAW
-  ): void {
+  public buildGates(gates: readonly Gate[]): void {
     this.dispose();
-
-    const yawRad = (cameraYawDeg * Math.PI) / 180;
 
     for (const gate of gates) {
       const geometry = new THREE.PlaneGeometry(gate.width, CONFIG.GATES.HEIGHT);
@@ -147,8 +142,8 @@ export class GateRenderer {
 
       const mesh = new THREE.Mesh(geometry, material);
       mesh.position.set(gate.x, CONFIG.GATES.BANNER_Y, gate.z);
-      // Face camera directly to prevent skewed reading
-      mesh.rotation.y = Math.PI + yawRad;
+      // Align banner strictly with the road cross-section (parallel to road X-axis)
+      mesh.rotation.y = Math.PI;
 
       // Add a thin glowing base energy line on the road beneath the gate (parallel to road X-axis)
       const lineGeom = new THREE.PlaneGeometry(gate.width, 0.15);
@@ -173,12 +168,11 @@ export class GateRenderer {
     }
   }
 
-  public updateYaw(cameraYawDeg: number): void {
-    const yawRad = (cameraYawDeg * Math.PI) / 180;
+  public updateYaw(_cameraYawDeg: number): void {
     for (let i = 0; i < this.gateMeshes.length; i += 2) {
       const banner = this.gateMeshes[i];
       if (banner) {
-        banner.rotation.y = Math.PI + yawRad;
+        banner.rotation.y = Math.PI;
       }
     }
   }

@@ -6,6 +6,7 @@ import { createScene } from './render/scene';
 import { CannonRender } from './render/cannon';
 import { MobRenderer } from './render/mobs';
 import { GateRenderer } from './render/gates';
+import { HudController } from './ui/hud';
 import { FarFieldHorde } from './render/far_field';
 import { BareStressTest } from './render/bare_stress';
 import { AdaptiveQualityManager } from './render/adaptive';
@@ -86,9 +87,19 @@ function init(): void {
     debug.updateGroundRange(range);
   });
 
-  let bareStress: BareStressTest | null = null;
+  // Initialize gameplay HUD (Base HP bar, Game Over modal, restart trigger)
+  const hud = new HudController(() => {
+    sim.restart();
+    hud.reset();
+  });
 
-  if (stressCount > 0) {
+  let bareStress: BareStressTest | null = null;
+  const scenario = urlParams.get('scenario');
+
+  if (scenario === 'combat') {
+    sim.setCombatStressMode(1000, 1000);
+    console.info('[SwarmGate] Combat stress scenario active: 1,000 Blue vs 1,000 Red (2,000 active units)');
+  } else if (stressCount > 0) {
     if (useBareStress) {
       bareStress = new BareStressTest(scene, stressCount);
       console.info(`[SwarmGate] Bare stress mode active: ${stressCount} cubes`);
@@ -97,8 +108,8 @@ function init(): void {
       console.info(`[SwarmGate] Gameplay mob stress mode active: ${stressCount} mobs`);
     }
   } else {
-    // Build level gate banners on the track (oriented to face camera yaw)
-    gateRender.buildGates(sim.gates.getGates(), camConfig.yaw);
+    // Build level gate banners on the track (aligned with road cross-section)
+    gateRender.buildGates(sim.gates.getGates());
   }
 
   // 7. Platform initialization & lifecycle listeners
@@ -115,6 +126,12 @@ function init(): void {
   configureDisplay().catch((err) => {
     console.warn('[SwarmGate] Platform display setup note:', err);
   });
+
+  // Dev hooks for testing
+  (window as unknown as { __sim?: unknown; __triggerGameOver?: () => void }).__sim = sim;
+  (window as unknown as { __triggerGameOver?: () => void }).__triggerGameOver = () => {
+    sim.base.takeDamage(CONFIG.BASE_MAX_HP);
+  };
 
   // 8. Main animation loop
   let lastTime = performance.now();
@@ -145,6 +162,7 @@ function init(): void {
       // Synchronize visual state from sim state
       cannonRender.update();
       mobRender.update(sim.pool);
+      hud.update(sim.base.hp, sim.base.maxHp, sim.base.isGameOver);
     }
 
     renderer.render(scene, camera);
@@ -154,7 +172,18 @@ function init(): void {
       bareStress ? bareStress.count : mobRender.countVisibleUnits(camera, sim.pool);
 
     const groundRange = computeFrustumGroundRange(camera);
-    debug.update(now, activeUnits, getVisible, renderer, viewport.getSize().dpr, groundRange);
+    const teamCounts = sim.getTeamCounts();
+    debug.update(
+      now,
+      activeUnits,
+      getVisible,
+      renderer,
+      viewport.getSize().dpr,
+      groundRange,
+      teamCounts.blue,
+      teamCounts.red,
+      sim.base.hp
+    );
   }
 
   requestAnimationFrame(animate);

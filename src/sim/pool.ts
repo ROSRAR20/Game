@@ -68,6 +68,21 @@ export function createMobPool(capacity: number): MobPool {
 }
 
 /**
+ * Resets the mob pool back to initial empty state without any allocations.
+ * Restores freeIndices order and resets active lists.
+ */
+export function resetMobPool(pool: MobPool): void {
+  pool.count = 0;
+  pool.freeCount = pool.capacity;
+  pool.active.fill(0);
+  for (let i = 0; i < pool.capacity; i++) {
+    pool.freeIndices[i] = i;
+    pool.activeIndicesMap[i] = -1;
+    pool.lastGateId[i] = -1;
+  }
+}
+
+/**
  * Allocates a mob from the pool using primitive arguments (zero object allocation).
  * If pool is full, merges weight into the most recently active unit of same team (Cap Overflow).
  * Returns:

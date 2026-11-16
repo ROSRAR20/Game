@@ -23,6 +23,9 @@ export class DebugOverlay {
   private trisEl: HTMLElement | null = null;
   private dprEl: HTMLElement | null = null;
   private zRangeEl: HTMLElement | null = null;
+  private blueEl: HTMLElement | null = null;
+  private redEl: HTMLElement | null = null;
+  private baseHpEl: HTMLElement | null = null;
 
   // Frame timing
   private lastTime: number = performance.now();
@@ -63,6 +66,9 @@ export class DebugOverlay {
     this.trisEl = document.getElementById('dbg-tris');
     this.dprEl = document.getElementById('dbg-dpr');
     this.zRangeEl = document.getElementById('dbg-zrange');
+    this.blueEl = document.getElementById('dbg-blue');
+    this.redEl = document.getElementById('dbg-red');
+    this.baseHpEl = document.getElementById('dbg-base-hp');
 
     if (this.overlayEl && this.isVisible) {
       this.overlayEl.style.display = 'block';
@@ -130,7 +136,10 @@ export class DebugOverlay {
     getVisibleUnits: () => number,
     renderer: THREE.WebGLRenderer,
     dpr: number,
-    groundRange?: FrustumGroundRange
+    groundRange?: FrustumGroundRange,
+    blueCount: number = 0,
+    redCount: number = 0,
+    baseHp: number = 100
   ): void {
     const delta = now - this.lastTime;
     this.frameCount++;
@@ -148,6 +157,9 @@ export class DebugOverlay {
         if (this.unitsEl) {
           this.unitsEl.textContent = `${activeUnits} (vis: ${visibleUnits})`;
         }
+        if (this.blueEl) this.blueEl.textContent = String(blueCount);
+        if (this.redEl) this.redEl.textContent = String(redCount);
+        if (this.baseHpEl) this.baseHpEl.textContent = String(Math.max(0, Math.round(baseHp)));
         if (this.drawsEl) this.drawsEl.textContent = String(renderer.info.render.calls);
         if (this.trisEl) this.trisEl.textContent = String(renderer.info.render.triangles);
         if (this.dprEl) this.dprEl.textContent = String(dpr.toFixed(1));

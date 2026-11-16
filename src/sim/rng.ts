@@ -13,6 +13,10 @@ export class SeededRNG {
     this.state = seed >>> 0;
   }
 
+  public getState(): number {
+    return this.state;
+  }
+
   /**
    * Generates a pseudo-random float in [0, 1).
    */
