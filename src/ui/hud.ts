@@ -9,6 +9,8 @@ export class HudController {
   private victoryModal: HTMLElement | null = null;
   private replayBtn: HTMLElement | null = null;
   private victoryBaseStatus: HTMLElement | null = null;
+  private objTowersEl: HTMLElement | null = null;
+  private objBossEl: HTMLElement | null = null;
 
   private lastHp: number = CONFIG.BASE_MAX_HP;
   private vignetteTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -30,6 +32,8 @@ export class HudController {
     this.victoryModal = document.getElementById('victory-modal');
     this.replayBtn = document.getElementById('btn-replay');
     this.victoryBaseStatus = document.getElementById('v-base-status');
+    this.objTowersEl = document.getElementById('obj-towers');
+    this.objBossEl = document.getElementById('obj-boss');
 
     if (this.restartBtn) {
       this.restartBtn.addEventListener('click', () => {
@@ -46,7 +50,14 @@ export class HudController {
     }
   }
 
-  public update(baseHp: number, maxHp: number, isGameOver: boolean, isGameWon: boolean = false): void {
+  public update(
+    baseHp: number,
+    maxHp: number,
+    isGameOver: boolean,
+    isGameWon: boolean = false,
+    towersRemaining: number = 0,
+    bossesRemaining: number = 0
+  ): void {
     // 1. Damage vignette flash effect when base takes damage
     if (baseHp < this.lastHp && this.damageVignette) {
       this.triggerDamageFlash();
@@ -65,6 +76,27 @@ export class HudController {
         this.baseHpFill.classList.add('danger');
       } else {
         this.baseHpFill.classList.remove('danger');
+      }
+    }
+
+    // 3. Level Objectives tracking
+    if (this.objTowersEl) {
+      if (towersRemaining === 0) {
+        this.objTowersEl.textContent = 'TOWER: ✓';
+        this.objTowersEl.classList.add('cleared');
+      } else {
+        this.objTowersEl.textContent = `TOWER: ${towersRemaining}`;
+        this.objTowersEl.classList.remove('cleared');
+      }
+    }
+
+    if (this.objBossEl) {
+      if (bossesRemaining === 0) {
+        this.objBossEl.textContent = 'BOSS: ✓';
+        this.objBossEl.classList.add('cleared');
+      } else {
+        this.objBossEl.textContent = `BOSS: ${bossesRemaining}`;
+        this.objBossEl.classList.remove('cleared');
       }
     }
 
@@ -135,6 +167,14 @@ export class HudController {
       this.baseHpText.textContent = `${maxHp} / ${maxHp}`;
       this.baseHpFill.style.width = '100%';
       this.baseHpFill.classList.remove('danger');
+    }
+    if (this.objTowersEl) {
+      this.objTowersEl.textContent = 'TOWER: 1';
+      this.objTowersEl.classList.remove('cleared');
+    }
+    if (this.objBossEl) {
+      this.objBossEl.textContent = 'BOSS: 1';
+      this.objBossEl.classList.remove('cleared');
     }
   }
 }

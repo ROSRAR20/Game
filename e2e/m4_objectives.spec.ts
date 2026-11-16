@@ -20,11 +20,17 @@ test.describe('Milestone M4 Objectives: Towers, Boss, and Victory', () => {
     const debugOverlay = page.locator('#debug-overlay');
     await expect(debugOverlay).toBeVisible();
 
-    // Spawn player mobs towards the tower at Z=62 using exposed dev helper
+    // Verify Level 1 Banner and Objective tracker
+    const levelBanner = page.locator('#level-banner');
+    await expect(levelBanner).toBeVisible();
+    const objTowers = page.locator('#obj-towers');
+    await expect(objTowers).toHaveText('TOWER: 1');
+
+    // Spawn player mobs towards the tower at Z=30 using exposed dev helper
     await page.evaluate(() => {
       const win = window as unknown as { __spawnBlueMobs?: (count: number, z: number) => void };
       if (win.__spawnBlueMobs) {
-        win.__spawnBlueMobs(20, 60.0);
+        win.__spawnBlueMobs(20, 28.0);
       }
     });
 
@@ -44,18 +50,18 @@ test.describe('Milestone M4 Objectives: Towers, Boss, and Victory', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/?debug');
 
-    // Fast-forward or position boss into active combat zone (e.g. Z=45)
+    // Fast-forward or position boss into active combat zone (Z=40)
     await page.evaluate(() => {
       const win = window as unknown as {
         __sim?: { bosses?: { bosses: Array<{ z: number; hp: number }> } };
         __spawnBlueMobs?: (count: number, z: number) => void;
       };
       if (win.__sim?.bosses?.bosses && win.__sim.bosses.bosses.length > 0) {
-        win.__sim.bosses.bosses[0].z = 45;
-        win.__sim.bosses.bosses[0].hp = 350; // Damaged state showing health bar
+        win.__sim.bosses.bosses[0].z = 40;
+        win.__sim.bosses.bosses[0].hp = 80; // Damaged state showing health bar
       }
       if (win.__spawnBlueMobs) {
-        win.__spawnBlueMobs(30, 43.0);
+        win.__spawnBlueMobs(30, 38.0);
       }
     });
 
@@ -125,5 +131,33 @@ test.describe('Milestone M4 Objectives: Towers, Boss, and Victory', () => {
     console.log('[E2E TEST] State after replay click:', stateAfter);
 
     await expect(victoryModal).not.toBeVisible();
+  });
+
+  test('verifies natural gameplay progress: visible tower, gates, and boss combat', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/?debug');
+
+    // Wait 4 seconds for natural fire and wave 1 clash at Z=18-30
+    await page.waitForTimeout(4000);
+
+    const state = await page.evaluate(() => {
+      const win = window as unknown as {
+        __sim?: {
+          towers: { towers: Array<{ hp: number; isDestroyed: boolean; z: number }> };
+          bosses: { bosses: Array<{ hp: number; isDefeated: boolean; z: number }> };
+          base: { hp: number };
+        };
+      };
+      return {
+        towerZ: win.__sim?.towers.towers[0]?.z,
+        towerHp: win.__sim?.towers.towers[0]?.hp,
+        bossZ: win.__sim?.bosses.bosses[0]?.z,
+        bossHp: win.__sim?.bosses.bosses[0]?.hp,
+        baseHp: win.__sim?.base.hp
+      };
+    });
+    console.log('[NATURAL GAMEPLAY STATE]:', state);
+    expect(state.towerZ).toBe(30);
+    expect(state.bossZ).toBeLessThan(44.0); // Boss is actively marching down!
   });
 });

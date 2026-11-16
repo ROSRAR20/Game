@@ -56,9 +56,9 @@ export const CONFIG = {
   CAMERA_OFFSET: { x: -8.8, y: 20, z: -9 },
   CAMERA_LOOK_AT: { x: 0, y: 1.0, z: 20 },
 
-  // Horde carpet positioning (visible in top quarter of framed road)
+  // Horde carpet positioning (visible in top quarter of framed road, behind boss spawn)
   HORDE_CARPET: {
-    START_Z: 48,
+    START_Z: 50,
     LENGTH: 40
   },
 

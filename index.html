@@ -137,6 +137,56 @@
         background: linear-gradient(90deg, #ef4444 0%, #f97316 100%);
       }
 
+      /* Level Banner & Objective Tracker */
+      #level-banner {
+        position: absolute;
+        top: calc(env(safe-area-inset-top, 0px) + 52px);
+        right: calc(env(safe-area-inset-right, 0px) + 12px);
+        width: 175px;
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        border-radius: 12px;
+        padding: 6px 10px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+        pointer-events: none;
+        z-index: 500;
+      }
+
+      .level-title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+        color: #e2e8f0;
+      }
+
+      .level-badge {
+        color: #38bdf8;
+        font-weight: 900;
+      }
+
+      .level-objectives {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 10px;
+        font-family: ui-monospace, SFMono-Regular, monospace;
+        font-weight: 700;
+        color: #94a3b8;
+      }
+
+      .obj-tag {
+        color: #f59e0b;
+        transition: color 0.2s ease;
+      }
+
+      .obj-tag.cleared {
+        color: #10b981;
+      }
+
       /* Damage Flash Vignette */
       #damage-vignette {
         position: absolute;
@@ -323,6 +373,17 @@
           </div>
           <div id="base-hp-track">
             <div id="base-hp-fill"></div>
+          </div>
+        </div>
+        <div id="level-banner">
+          <div class="level-title-row">
+            <span class="level-badge">LVL 1</span>
+            <span class="level-title">DESERT OUTPOST</span>
+          </div>
+          <div class="level-objectives">
+            <span id="obj-towers" class="obj-tag">TOWER: 1</span>
+            <span class="obj-divider">•</span>
+            <span id="obj-boss" class="obj-tag">BOSS: 1</span>
           </div>
         </div>
         <div id="debug-overlay">

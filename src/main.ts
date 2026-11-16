@@ -210,7 +210,17 @@ function init(): void {
       mobRender.update(sim.pool);
       towerRender.update(sim.towers.towers);
       bossRender.update(sim.bosses.bosses);
-      hud.update(sim.base.hp, sim.base.maxHp, sim.base.isGameOver, sim.isGameWon);
+
+      const towersRemaining = sim.towers.towers.filter((t) => !t.isDestroyed).length;
+      const bossesRemaining = sim.bosses.bosses.filter((b) => !b.isDefeated).length;
+      hud.update(
+        sim.base.hp,
+        sim.base.maxHp,
+        sim.base.isGameOver,
+        sim.isGameWon,
+        towersRemaining,
+        bossesRemaining
+      );
     }
 
     renderer.render(scene, camera);
