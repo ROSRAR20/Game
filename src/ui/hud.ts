@@ -6,6 +6,9 @@ export class HudController {
   private damageVignette: HTMLElement | null = null;
   private gameOverModal: HTMLElement | null = null;
   private restartBtn: HTMLElement | null = null;
+  private victoryModal: HTMLElement | null = null;
+  private replayBtn: HTMLElement | null = null;
+  private victoryBaseStatus: HTMLElement | null = null;
 
   private lastHp: number = CONFIG.BASE_MAX_HP;
   private vignetteTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -24,6 +27,9 @@ export class HudController {
     this.damageVignette = document.getElementById('damage-vignette');
     this.gameOverModal = document.getElementById('game-over-modal');
     this.restartBtn = document.getElementById('btn-restart');
+    this.victoryModal = document.getElementById('victory-modal');
+    this.replayBtn = document.getElementById('btn-replay');
+    this.victoryBaseStatus = document.getElementById('v-base-status');
 
     if (this.restartBtn) {
       this.restartBtn.addEventListener('click', () => {
@@ -31,9 +37,16 @@ export class HudController {
         this.onRestartCallback();
       });
     }
+
+    if (this.replayBtn) {
+      this.replayBtn.addEventListener('click', () => {
+        this.hideVictory();
+        this.onRestartCallback();
+      });
+    }
   }
 
-  public update(baseHp: number, maxHp: number, isGameOver: boolean): void {
+  public update(baseHp: number, maxHp: number, isGameOver: boolean, isGameWon: boolean = false): void {
     // 1. Damage vignette flash effect when base takes damage
     if (baseHp < this.lastHp && this.damageVignette) {
       this.triggerDamageFlash();
@@ -55,11 +68,16 @@ export class HudController {
       }
     }
 
-    // 3. Game Over modal presentation
-    if (isGameOver) {
+    // 3. Modal presentation: Victory or Game Over
+    if (isGameWon) {
+      this.hideGameOver();
+      this.showVictory(baseHp, maxHp);
+    } else if (isGameOver) {
+      this.hideVictory();
       this.showGameOver();
     } else {
       this.hideGameOver();
+      this.hideVictory();
     }
   }
 
@@ -91,9 +109,25 @@ export class HudController {
     }
   }
 
+  public showVictory(baseHp: number, maxHp: number): void {
+    if (this.victoryBaseStatus) {
+      this.victoryBaseStatus.textContent = `${Math.round(baseHp)} / ${maxHp} HP`;
+    }
+    if (this.victoryModal && this.victoryModal.style.display !== 'flex') {
+      this.victoryModal.style.display = 'flex';
+    }
+  }
+
+  public hideVictory(): void {
+    if (this.victoryModal && this.victoryModal.style.display !== 'none') {
+      this.victoryModal.style.display = 'none';
+    }
+  }
+
   public reset(maxHp: number = CONFIG.BASE_MAX_HP): void {
     this.lastHp = maxHp;
     this.hideGameOver();
+    this.hideVictory();
     if (this.damageVignette) {
       this.damageVignette.style.opacity = '0';
     }

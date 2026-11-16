@@ -60,9 +60,9 @@ describe('Fixed-Timestep Simulation Loop', () => {
     const sim = new Simulation(42);
     sim.cannon.fireInterval = 9999; // isolate from cannon
 
-    // Spawn 10 enemy red units right at the base line with weight 10 each = 100 damage
+    // Spawn 10 enemy red units right near the base line with weight 10 each = 100 damage
     for (let i = 0; i < 10; i++) {
-      spawnMob(sim.pool, 0, 0.1, 0, -5, 1, 0, 1, 1, 10);
+      spawnMob(sim.pool, 0, 0.05, 0, -5, 1, 0, 1, 1, 10);
     }
 
     expect(sim.base.hp).toBe(100);

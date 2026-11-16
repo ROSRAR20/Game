@@ -22,6 +22,16 @@ function computeSimStateHash(sim: Simulation): string {
   addInt(sim.pool.freeCount);
   addInt(sim.rng.getState());
 
+  for (const tower of sim.towers.towers) {
+    addFloat(tower.hp);
+    addInt(tower.isDestroyed ? 1 : 0);
+  }
+  for (const boss of sim.bosses.bosses) {
+    addFloat(boss.hp);
+    addFloat(boss.z);
+    addInt(boss.isDefeated ? 1 : 0);
+  }
+
   // Sort active slots by their slot index or position for stable hashing
   const slots: number[] = [];
   for (let i = 0; i < sim.pool.count; i++) {

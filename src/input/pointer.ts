@@ -77,7 +77,9 @@ export class InputManager {
       target &&
       (target.closest('#debug-overlay') ||
         target.closest('#cam-tuner-panel') ||
-        target.closest('#cam-qs-modal'))
+        target.closest('#cam-qs-modal') ||
+        target.closest('#game-over-modal') ||
+        target.closest('#victory-modal'))
     ) {
       return;
     }

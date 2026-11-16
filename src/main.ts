@@ -6,6 +6,8 @@ import { createScene } from './render/scene';
 import { CannonRender } from './render/cannon';
 import { MobRenderer } from './render/mobs';
 import { GateRenderer } from './render/gates';
+import { TowerRenderer } from './render/towers';
+import { BossRenderer } from './render/boss';
 import { HudController } from './ui/hud';
 import { FarFieldHorde } from './render/far_field';
 import { BareStressTest } from './render/bare_stress';
@@ -75,6 +77,8 @@ function init(): void {
   const cannonRender = new CannonRender(scene, sim.cannon);
   const mobRender = new MobRenderer(scene);
   const gateRender = new GateRenderer(scene);
+  const towerRender = new TowerRenderer(scene);
+  const bossRender = new BossRenderer(scene);
 
   // Initialize reference image overlay (?refOverlay=1)
   initRefOverlay();
@@ -87,9 +91,11 @@ function init(): void {
     debug.updateGroundRange(range);
   });
 
-  // Initialize gameplay HUD (Base HP bar, Game Over modal, restart trigger)
+  // Initialize gameplay HUD (Base HP bar, Game Over modal, Victory modal, restart trigger)
   const hud = new HudController(() => {
     sim.restart();
+    towerRender.update(sim.towers.towers);
+    bossRender.update(sim.bosses.bosses);
     hud.reset();
   });
 
@@ -108,8 +114,10 @@ function init(): void {
       console.info(`[SwarmGate] Gameplay mob stress mode active: ${stressCount} mobs`);
     }
   } else {
-    // Build level gate banners on the track (aligned with road cross-section)
+    // Build level gates, guardian towers, and boss entities
     gateRender.buildGates(sim.gates.getGates());
+    towerRender.buildTowers(sim.towers.towers);
+    bossRender.buildBosses(sim.bosses.bosses);
   }
 
   // 7. Platform initialization & lifecycle listeners
@@ -128,9 +136,47 @@ function init(): void {
   });
 
   // Dev hooks for testing
-  (window as unknown as { __sim?: unknown; __triggerGameOver?: () => void }).__sim = sim;
+  (window as unknown as {
+    __sim?: unknown;
+    __triggerGameOver?: () => void;
+    __triggerWin?: () => void;
+    __spawnBlueMobs?: (count: number, z: number) => void;
+  }).__sim = sim;
+
   (window as unknown as { __triggerGameOver?: () => void }).__triggerGameOver = () => {
     sim.base.takeDamage(CONFIG.BASE_MAX_HP);
+  };
+
+  (window as unknown as { __triggerWin?: () => void }).__triggerWin = () => {
+    for (const t of sim.towers.towers) {
+      t.hp = 0;
+      t.isDestroyed = true;
+    }
+    for (const b of sim.bosses.bosses) {
+      b.hp = 0;
+      b.isDefeated = true;
+    }
+    sim.waves.currentWaveIdx = sim.waves.waves.length;
+    sim.isGameWon = true;
+  };
+
+  (window as unknown as { __spawnBlueMobs?: (count: number, z: number) => void }).__spawnBlueMobs = (
+    count: number,
+    z: number
+  ) => {
+    for (let i = 0; i < count; i++) {
+      sim.spawnMob(
+        (Math.random() - 0.5) * 2.0,
+        z + (Math.random() - 0.5) * 1.5,
+        0,
+        8,
+        0,
+        0,
+        1,
+        1,
+        1
+      );
+    }
   };
 
   // 8. Main animation loop
@@ -162,7 +208,9 @@ function init(): void {
       // Synchronize visual state from sim state
       cannonRender.update();
       mobRender.update(sim.pool);
-      hud.update(sim.base.hp, sim.base.maxHp, sim.base.isGameOver);
+      towerRender.update(sim.towers.towers);
+      bossRender.update(sim.bosses.bosses);
+      hud.update(sim.base.hp, sim.base.maxHp, sim.base.isGameOver, sim.isGameWon);
     }
 
     renderer.render(scene, camera);

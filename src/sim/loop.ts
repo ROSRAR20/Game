@@ -1,11 +1,15 @@
 import { CONFIG } from '../config/constants';
-import { MobPool, createMobPool, despawnMob } from './pool';
+import { MobPool, createMobPool, despawnMob, spawnMob, resetMobPool } from './pool';
 import { CannonSim } from './cannon';
 import { SeededRNG } from './rng';
 import { GateManager } from './gates';
 import { BaseDefense } from './base';
 import { CombatResolver } from './combat';
-import { getLevelGates } from '../data/level';
+import { WaveManager } from './waves';
+import { TowerManager } from './towers';
+import { BossManager } from './boss';
+import { getLevelGates, getLevel1Data } from '../data/level';
+import { getLevel1Waves } from '../data/waves';
 
 export class Simulation {
   public pool: MobPool;
@@ -14,10 +18,17 @@ export class Simulation {
   public gates: GateManager;
   public base: BaseDefense;
   public combat: CombatResolver;
+  public waves: WaveManager;
+  public towers: TowerManager;
+  public bosses: BossManager;
+  public isGameWon: boolean = false;
 
   private readonly initialSeed: number;
   private accumulator: number = 0;
   private isStressMode: boolean = false;
+  private isCombatStressMode: boolean = false;
+  private combatStressTargetBlue: number = 0;
+  private combatStressTargetRed: number = 0;
 
   constructor(seed: number = 42, capacity: number = CONFIG.MAX_UNITS) {
     this.initialSeed = seed;
@@ -28,11 +39,54 @@ export class Simulation {
     this.gates.setGates(getLevelGates());
     this.base = new BaseDefense(CONFIG.BASE_MAX_HP);
     this.combat = new CombatResolver();
+    this.waves = new WaveManager(getLevel1Waves());
+
+    const levelData = getLevel1Data();
+    this.towers = new TowerManager(levelData.towers);
+    this.bosses = new BossManager(levelData.bosses);
+    this.isGameWon = false;
   }
 
   public setStressMode(targetCount: number): void {
     this.isStressMode = targetCount > 0;
     this.cannon.stressTargetCount = targetCount;
+  }
+
+  public setCombatStressMode(targetBlue: number = 1000, targetRed: number = 1000): void {
+    this.isCombatStressMode = targetBlue > 0 || targetRed > 0;
+    this.combatStressTargetBlue = targetBlue;
+    this.combatStressTargetRed = targetRed;
+    if (this.isCombatStressMode) {
+      this.cannon.fireInterval = 999999;
+    }
+  }
+
+  public getTeamCounts(): { blue: number; red: number } {
+    let blue = 0;
+    let red = 0;
+    const count = this.pool.count;
+    const team = this.pool.team;
+    const active = this.pool.activeIndices;
+    for (let i = 0; i < count; i++) {
+      if (team[active[i]] === 0) blue++;
+      else red++;
+    }
+    return { blue, red };
+  }
+
+  public spawnMob(
+    x: number,
+    z: number,
+    vx: number,
+    vz: number,
+    team: number,
+    tier: number = 0,
+    hp: number = 1,
+    damage: number = 1,
+    weight: number = 1,
+    lastGateId: number = -1
+  ): number {
+    return spawnMob(this.pool, x, z, vx, vz, team, tier, hp, damage, weight, lastGateId);
   }
 
   /**
@@ -63,13 +117,47 @@ export class Simulation {
    * Single deterministic tick of the simulation.
    */
   public step(dt: number): void {
-    // If base has fallen, simulation freezes in Game Over state
-    if (this.base.isGameOver) {
+    // If base has fallen or level is cleared, simulation freezes
+    if (this.base.isGameOver || this.isGameWon) {
       return;
     }
 
     // 1. Update cannon state and auto-spawner
     this.cannon.update(dt, this.pool, this.rng);
+
+    // Continuous combat stress replenishment (keeps ~targetBlue and ~targetRed in combat)
+    if (this.isCombatStressMode) {
+      let blueCount = 0;
+      let redCount = 0;
+      for (let i = 0; i < this.pool.count; i++) {
+        const slot = this.pool.activeIndices[i];
+        if (this.pool.team[slot] === 0) blueCount++;
+        else redCount++;
+      }
+
+      const needBlue = this.combatStressTargetBlue - blueCount;
+      if (needBlue > 0) {
+        const batch = Math.min(needBlue, 50);
+        for (let i = 0; i < batch; i++) {
+          const sx = this.rng.nextRange(CONFIG.CANNON_MIN_X, CONFIG.CANNON_MAX_X);
+          const sz = this.rng.nextRange(CONFIG.CANNON_MUZZLE_Z, 22);
+          spawnMob(this.pool, sx, sz, 0, CONFIG.MOB_BASE_SPEED, 0);
+        }
+      }
+
+      const needRed = this.combatStressTargetRed - redCount;
+      if (needRed > 0) {
+        const batch = Math.min(needRed, 50);
+        for (let i = 0; i < batch; i++) {
+          const sx = this.rng.nextRange(
+            CONFIG.ROAD_X_MIN + CONFIG.MOB_RADIUS,
+            CONFIG.ROAD_X_MAX - CONFIG.MOB_RADIUS
+          );
+          const sz = this.rng.nextRange(30, 52);
+          spawnMob(this.pool, sx, sz, 0, -3.0, 1, 0, 1, 1, 1);
+        }
+      }
+    }
 
     // 2. Step mob positions and handle road boundaries
     const count = this.pool.count;
@@ -96,21 +184,44 @@ export class Simulation {
       }
     }
 
-    // 3. Process gate crossings and clone emissions (Team 0 blue mobs only)
-    if (!this.isStressMode) {
+    // 3. Process gate crossings, wave spawns, towers, bosses, and combat collisions
+    if (this.isCombatStressMode) {
+      this.combat.resolveCombat(this.pool);
+    } else if (!this.isStressMode) {
       this.gates.update(this.pool, dt);
-    }
-
-    // 4. Resolve combat collisions and base breaches (Milestone M3)
-    if (!this.isStressMode) {
+      this.waves.update(dt, this.pool, this.rng);
+      this.towers.update(this.pool, this.rng);
+      this.bosses.update(dt, this.pool, this.base);
       this.combat.resolveCombat(this.pool);
       this.combat.checkBaseBreaches(this.pool, this.base);
+
+      // Check win condition (all towers destroyed, all bosses defeated, all waves cleared)
+      if (!this.base.isGameOver) {
+        const allTowersDestroyed = this.towers.isAllTowersDestroyed();
+        const allBossesDefeated = this.bosses.isAllBossesDefeated();
+        const allWavesSpawned = this.waves.isAllWavesSpawned();
+        const teamCounts = this.getTeamCounts();
+        if (allTowersDestroyed && allBossesDefeated && allWavesSpawned && teamCounts.red === 0) {
+          this.isGameWon = true;
+        }
+      }
     }
 
-    // 5. Handle boundary conditions
+    // 4. Handle boundary conditions
     for (let i = pool.count - 1; i >= 0; i--) {
       const slot = pool.activeIndices[i];
-      if (this.isStressMode) {
+      if (this.isCombatStressMode) {
+        if (pool.team[slot] === 0 && pool.z[slot] > 55) {
+          pool.z[slot] = this.rng.nextRange(CONFIG.CANNON_MUZZLE_Z, 18);
+          pool.x[slot] = this.rng.nextRange(CONFIG.CANNON_MIN_X, CONFIG.CANNON_MAX_X);
+        } else if (pool.team[slot] === 1 && pool.z[slot] < 12) {
+          pool.z[slot] = this.rng.nextRange(34, 50);
+          pool.x[slot] = this.rng.nextRange(
+            CONFIG.ROAD_X_MIN + CONFIG.MOB_RADIUS,
+            CONFIG.ROAD_X_MAX - CONFIG.MOB_RADIUS
+          );
+        }
+      } else if (this.isStressMode) {
         // In stress mode, wrap units continuously to maintain uniform screen coverage
         const span = CONFIG.ROAD_LENGTH - CONFIG.CANNON_MUZZLE_Z;
         if (pool.z[slot] > CONFIG.ROAD_LENGTH) {
@@ -130,11 +241,8 @@ export class Simulation {
    * Resets simulation back to tick 0 state for deterministic restart.
    */
   public restart(seed: number = this.initialSeed): void {
-    // 1. Despawn all active units
-    while (this.pool.count > 0) {
-      const slot = this.pool.activeIndices[this.pool.count - 1];
-      despawnMob(this.pool, slot);
-    }
+    // 1. Reset pool back to pristine state with ordered free-list
+    resetMobPool(this.pool);
 
     // 2. Reset cannon position and cooldowns
     this.cannon.x = 0;
@@ -147,8 +255,12 @@ export class Simulation {
     // 4. Reset base defense
     this.base.reset();
 
-    // 5. Reset gates
+    // 5. Reset gates, waves, towers, and bosses
     this.gates.reset();
+    this.waves.reset();
+    this.towers.reset();
+    this.bosses.reset();
+    this.isGameWon = false;
 
     // 6. Reset timestep accumulator
     this.accumulator = 0;
