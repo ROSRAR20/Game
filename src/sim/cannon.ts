@@ -7,14 +7,30 @@ export class CannonSim {
   public targetX: number = 0;
   public fireTimer: number = 0;
   public fireInterval: number = 1 / CONFIG.CANNON_FIRE_RATE;
+  public tier: number = 0; // 0 = Standard, 1 = Armored, 2 = Elite Fire
+  public justFired: boolean = false;
 
   // Stress testing mode support
   public stressTargetCount: number = 0;
 
   constructor() {
+    this.reset();
+  }
+
+  public upgradeTier(): boolean {
+    if (this.tier < 2) {
+      this.tier++;
+      return true;
+    }
+    return false;
+  }
+
+  public reset(): void {
     this.x = 0;
     this.targetX = 0;
     this.fireTimer = 0;
+    this.tier = 0;
+    this.justFired = false;
   }
 
   public setTargetX(newTargetX: number): void {
@@ -29,9 +45,16 @@ export class CannonSim {
   }
 
   public update(dt: number, pool: MobPool, rng: SeededRNG): void {
+    this.justFired = false;
+
     // 1. Smoothly interpolate cannon position towards target
     const lerpFactor = Math.min(1, CONFIG.CANNON_LERP_SPEED * dt);
     this.x += (this.targetX - this.x) * lerpFactor;
+
+    // Determine current tier unit properties
+    const tierHp = this.tier === 2 ? 4 : this.tier === 1 ? 2 : 1;
+    const tierDamage = this.tier === 2 ? 3 : this.tier === 1 ? 2 : 1;
+    const tierWeight = this.tier === 2 ? 4 : this.tier === 1 ? 2 : 1;
 
     // 2. Firing logic
     if (this.stressTargetCount > 0) {
@@ -53,10 +76,10 @@ export class CannonSim {
             0,
             CONFIG.MOB_BASE_SPEED + rng.nextRange(-1, 1),
             0, // team 0 (Blue)
-            0, // tier
-            1, // hp
-            1, // damage
-            1, // weight
+            this.tier,
+            tierHp,
+            tierDamage,
+            tierWeight,
             -1 // lastGateId
           );
         }
@@ -66,6 +89,7 @@ export class CannonSim {
       this.fireTimer += dt;
       while (this.fireTimer >= this.fireInterval) {
         this.fireTimer -= this.fireInterval;
+        this.justFired = true;
 
         // Small lateral jitter on bullet/mob spawn for organic cluster feel
         const jitterX = rng.nextRange(-0.15, 0.15);
@@ -76,10 +100,10 @@ export class CannonSim {
           0,
           CONFIG.MOB_BASE_SPEED,
           0, // team 0 (Blue)
-          0, // tier
-          1, // hp
-          1, // damage
-          1, // weight
+          this.tier,
+          tierHp,
+          tierDamage,
+          tierWeight,
           -1 // lastGateId
         );
       }

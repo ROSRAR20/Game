@@ -49,6 +49,10 @@ export class BossSim {
 
 export class BossManager {
   public bosses: BossSim[] = [];
+  public justDefeatedBoss = false;
+  public justDamagedBoss = false;
+  public lastBossX = 0;
+  public lastBossZ = 0;
 
   constructor(bossesData: BossData[] = []) {
     this.setBosses(bossesData);
@@ -59,6 +63,8 @@ export class BossManager {
   }
 
   public reset(): void {
+    this.justDefeatedBoss = false;
+    this.justDamagedBoss = false;
     for (let i = 0; i < this.bosses.length; i++) {
       this.bosses[i].reset();
     }
@@ -78,6 +84,8 @@ export class BossManager {
    * resolves player swarm collisions, and checks base line breaches.
    */
   public update(dt: number, pool: MobPool, baseDefense: BaseDefense): void {
+    this.justDefeatedBoss = false;
+    this.justDamagedBoss = false;
     if (this.bosses.length === 0 || baseDefense.isGameOver) return;
 
     for (let b = 0; b < this.bosses.length; b++) {
@@ -120,11 +128,15 @@ export class BossManager {
         if (distSq <= hitRadiusSq) {
           const dmg = pool.weight[slot];
           boss.hp -= dmg;
+          this.justDamagedBoss = true;
+          this.lastBossX = bx;
+          this.lastBossZ = bz;
           despawnMob(pool, slot);
 
           if (boss.hp <= 0) {
             boss.hp = 0;
             boss.isDefeated = true;
+            this.justDefeatedBoss = true;
             break; // Boss defeated
           }
         }

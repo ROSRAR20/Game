@@ -18,6 +18,7 @@ function computeSimStateHash(sim: Simulation): string {
 
   addFloat(sim.base.hp);
   addFloat(sim.cannon.x);
+  addInt(sim.cannon.tier);
   addInt(sim.pool.count);
   addInt(sim.pool.freeCount);
   addInt(sim.rng.getState());
@@ -30,6 +31,9 @@ function computeSimStateHash(sim: Simulation): string {
     addFloat(boss.hp);
     addFloat(boss.z);
     addInt(boss.isDefeated ? 1 : 0);
+  }
+  for (const pickup of sim.pickups.pickups) {
+    addInt(pickup.isCollected ? 1 : 0);
   }
 
   // Sort active slots by their slot index or position for stable hashing

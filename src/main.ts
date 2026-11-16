@@ -8,6 +8,10 @@ import { MobRenderer } from './render/mobs';
 import { GateRenderer } from './render/gates';
 import { TowerRenderer } from './render/towers';
 import { BossRenderer } from './render/boss';
+import { PickupRenderer } from './render/pickups';
+import { ParticleVFX, ScreenShake } from './render/vfx';
+import { SoundManager } from './audio/sound';
+import { HapticsManager } from './platform/haptics';
 import { HudController } from './ui/hud';
 import { FarFieldHorde } from './render/far_field';
 import { BareStressTest } from './render/bare_stress';
@@ -73,12 +77,18 @@ function init(): void {
   const urlParams = new URLSearchParams(window.location.search);
   const useBareStress = urlParams.has('bare');
 
-  // 7. Visual renderers
+  // 7. Visual renderers & Juice systems
   const cannonRender = new CannonRender(scene, sim.cannon);
   const mobRender = new MobRenderer(scene);
   const gateRender = new GateRenderer(scene);
   const towerRender = new TowerRenderer(scene);
   const bossRender = new BossRenderer(scene);
+  const pickupRender = new PickupRenderer(scene);
+  const vfx = new ParticleVFX(scene);
+  const screenShake = new ScreenShake();
+  const sound = new SoundManager();
+
+  const camBasePos = camera.position.clone();
 
   // Initialize reference image overlay (?refOverlay=1)
   initRefOverlay();
@@ -87,15 +97,25 @@ function init(): void {
   new CameraTunerPanel(camera, camConfig, (updatedCfg) => {
     input.updateProjectionAxis(camera);
     gateRender.updateYaw(updatedCfg.yaw);
+    camBasePos.copy(camera.position);
     const range = computeFrustumGroundRange(camera);
     debug.updateGroundRange(range);
   });
+
+  // State transition flags for audio/haptics
+  let prevGameOver = false;
+  let prevGameWon = false;
 
   // Initialize gameplay HUD (Base HP bar, Game Over modal, Victory modal, restart trigger)
   const hud = new HudController(() => {
     sim.restart();
     towerRender.update(sim.towers.towers);
     bossRender.update(sim.bosses.bosses);
+    pickupRender.update(0, sim.pickups.pickups, camera);
+    vfx.clear();
+    screenShake.reset();
+    prevGameOver = false;
+    prevGameWon = false;
     hud.reset();
   });
 
@@ -141,7 +161,13 @@ function init(): void {
     __triggerGameOver?: () => void;
     __triggerWin?: () => void;
     __spawnBlueMobs?: (count: number, z: number) => void;
+    __sound?: SoundManager;
+    __vfx?: ParticleVFX;
+    __screenShake?: ScreenShake;
   }).__sim = sim;
+  (window as unknown as { __sound?: SoundManager }).__sound = sound;
+  (window as unknown as { __vfx?: ParticleVFX }).__vfx = vfx;
+  (window as unknown as { __screenShake?: ScreenShake }).__screenShake = screenShake;
 
   (window as unknown as { __triggerGameOver?: () => void }).__triggerGameOver = () => {
     sim.base.takeDamage(CONFIG.BASE_MAX_HP);
@@ -205,11 +231,90 @@ function init(): void {
       // Step fixed 60 Hz simulation
       sim.update(dt);
 
+      // Sim events -> Juice & Haptics & Audio & VFX
+      if (sim.cannon.justFired) {
+        vfx.spawnMuzzleFlash(sim.cannon.x, 0.35, 0.5);
+        sound.playShoot();
+        HapticsManager.light();
+        sim.cannon.justFired = false;
+      }
+
+      if (sim.pickups.justCollectedUpgrade) {
+        vfx.spawnGateSparkles(sim.cannon.x, 0.6, 24.0, 16, true);
+        screenShake.addTrauma(0.25);
+        sound.playLevelUp();
+        HapticsManager.medium();
+        sim.pickups.justCollectedUpgrade = false;
+      }
+
+      if (sim.gates.justCrossedGate) {
+        vfx.spawnGateSparkles(sim.gates.lastCrossedGateX, 0.4, sim.gates.lastCrossedGateZ, 6);
+        sound.playGatePass();
+        HapticsManager.medium();
+        sim.gates.justCrossedGate = false;
+      }
+
+      if (sim.combat.justHadCombatHit) {
+        vfx.spawnHitSparks(sim.combat.lastHitX, 0.3, sim.combat.lastHitZ, 3);
+        sound.playHit();
+        sim.combat.justHadCombatHit = false;
+      }
+
+      if (sim.combat.justHadBaseBreach) {
+        screenShake.addTrauma(0.35);
+        sound.playGameOver();
+        HapticsManager.heavy();
+        sim.combat.justHadBaseBreach = false;
+      }
+
+      if (sim.towers.justDamagedTower) {
+        vfx.spawnHitSparks(sim.towers.lastTowerX, 1.0, sim.towers.lastTowerZ, 4);
+        sound.playHit();
+        sim.towers.justDamagedTower = false;
+      }
+
+      if (sim.towers.justDestroyedTower) {
+        vfx.spawnExplosion(sim.towers.lastTowerX, 1.2, sim.towers.lastTowerZ, 32);
+        screenShake.addTrauma(0.5);
+        sound.playTowerExplosion();
+        HapticsManager.heavy();
+        sim.towers.justDestroyedTower = false;
+      }
+
+      if (sim.bosses.justDamagedBoss) {
+        vfx.spawnHitSparks(sim.bosses.lastBossX, 1.2, sim.bosses.lastBossZ, 4);
+        sound.playHit();
+        sim.bosses.justDamagedBoss = false;
+      }
+
+      if (sim.bosses.justDefeatedBoss) {
+        vfx.spawnExplosion(sim.bosses.lastBossX, 1.5, sim.bosses.lastBossZ, 40);
+        screenShake.addTrauma(0.65);
+        sound.playTowerExplosion();
+        HapticsManager.heavy();
+        sim.bosses.justDefeatedBoss = false;
+      }
+
+      if (sim.isGameWon && !prevGameWon) {
+        sound.playVictory();
+        HapticsManager.success();
+        prevGameWon = true;
+      }
+
+      if (sim.base.isGameOver && !prevGameOver) {
+        sound.playGameOver();
+        HapticsManager.heavy();
+        prevGameOver = true;
+      }
+
       // Synchronize visual state from sim state
       cannonRender.update();
       mobRender.update(sim.pool);
       towerRender.update(sim.towers.towers);
       bossRender.update(sim.bosses.bosses);
+      pickupRender.update(dt, sim.pickups.pickups, camera);
+      vfx.update(dt, camera);
+      screenShake.update(dt, camera, camBasePos);
 
       const towersRemaining = sim.towers.towers.filter((t) => !t.isDestroyed).length;
       const bossesRemaining = sim.bosses.bosses.filter((b) => !b.isDefeated).length;

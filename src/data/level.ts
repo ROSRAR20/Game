@@ -36,6 +36,14 @@ export const BossItemSchema = z.object({
   speed: z.number().positive().max(CONFIG.WAVES.MAX_SPEED)
 });
 
+export const PickupItemSchema = z.object({
+  id: z.number().int().positive(),
+  kind: z.enum(['upgrade']),
+  x: z.number().min(minRoadX).max(maxRoadX),
+  z: z.number().min(5).max(CONFIG.ROAD_LENGTH - 2),
+  radius: z.number().positive().max(CONFIG.ROAD_WIDTH / 2)
+});
+
 export const LevelDataSchema = z
   .object({
     id: z.number().int().positive(),
@@ -43,6 +51,7 @@ export const LevelDataSchema = z
     gates: z.array(GateItemSchema),
     towers: z.array(TowerItemSchema),
     bosses: z.array(BossItemSchema),
+    pickups: z.array(PickupItemSchema).default([]),
     waves: z.array(WaveItemSchema)
   })
   .refine(
@@ -51,20 +60,23 @@ export const LevelDataSchema = z
       const gateIds = new Set(level.gates.map((g) => g.id));
       const towerIds = new Set(level.towers.map((t) => t.id));
       const bossIds = new Set(level.bosses.map((b) => b.id));
+      const pickupIds = new Set(level.pickups.map((p) => p.id));
 
       if (gateIds.size !== level.gates.length) return false;
       if (towerIds.size !== level.towers.length) return false;
       if (bossIds.size !== level.bosses.length) return false;
+      if (pickupIds.size !== level.pickups.length) return false;
       return true;
     },
     {
-      message: 'Entity IDs must be unique within gates, towers, and bosses'
+      message: 'Entity IDs must be unique within gates, towers, bosses, and pickups'
     }
   );
 
 export type GateItem = z.infer<typeof GateItemSchema>;
 export type TowerItem = z.infer<typeof TowerItemSchema>;
 export type BossItem = z.infer<typeof BossItemSchema>;
+export type PickupItem = z.infer<typeof PickupItemSchema>;
 export type LevelData = z.infer<typeof LevelDataSchema>;
 
 export function validateLevel(data: unknown): LevelData {

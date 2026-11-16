@@ -43,6 +43,10 @@ export class TowerSim {
 
 export class TowerManager {
   public towers: TowerSim[] = [];
+  public justDestroyedTower = false;
+  public justDamagedTower = false;
+  public lastTowerX = 0;
+  public lastTowerZ = 0;
 
   constructor(towersData: TowerData[] = []) {
     this.setTowers(towersData);
@@ -53,6 +57,8 @@ export class TowerManager {
   }
 
   public reset(): void {
+    this.justDestroyedTower = false;
+    this.justDamagedTower = false;
     for (let i = 0; i < this.towers.length; i++) {
       this.towers[i].reset();
     }
@@ -74,6 +80,8 @@ export class TowerManager {
    * Zero heap allocations during frame tick.
    */
   public update(pool: MobPool, rng: SeededRNG): void {
+    this.justDestroyedTower = false;
+    this.justDamagedTower = false;
     if (this.towers.length === 0 || pool.count === 0) return;
 
     for (let t = 0; t < this.towers.length; t++) {
@@ -103,11 +111,15 @@ export class TowerManager {
         if (distSq <= hitRadiusSq) {
           const dmg = pool.weight[slot];
           tower.hp -= dmg;
+          this.justDamagedTower = true;
+          this.lastTowerX = tx;
+          this.lastTowerZ = tz;
           despawnMob(pool, slot);
 
           if (tower.hp <= 0) {
             tower.hp = 0;
             tower.isDestroyed = true;
+            this.justDestroyedTower = true;
             this.grantReward(tower, pool, rng);
             break; // Tower destroyed; stop checking further mobs for this tower
           }

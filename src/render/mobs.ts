@@ -58,6 +58,8 @@ export class MobRenderer {
 
     this.blueMesh = new THREE.InstancedMesh(geometry, blueMaterial, capacity);
     this.blueMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.blueMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
+    this.blueMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
     this.blueMesh.count = 0;
     this.blueMesh.frustumCulled = false;
 
@@ -99,9 +101,11 @@ export class MobRenderer {
     const x = pool.x;
     const z = pool.z;
     const team = pool.team;
+    const tier = pool.tier;
     const weight = pool.weight;
     const blueArr = this.blueMatrixArray;
     const redArr = this.redMatrixArray;
+    const blueColorArr = (this.blueMesh.instanceColor as THREE.InstancedBufferAttribute).array as Float32Array;
     const y = CONFIG.MOB_HEIGHT / 2;
 
     let blueCount = 0;
@@ -111,20 +115,44 @@ export class MobRenderer {
     for (let i = 0; i < totalCount; i++) {
       const slot = activeIndices[i];
       const w = weight[slot];
-      const s = w > 1 ? Math.min(1.4, 1.0 + (w - 1) * 0.08) : 1.0;
+      const t = tier[slot];
 
       if (team[slot] === 0) {
-        // Team 0: Player Blue
+        // Team 0: Player Blue with Tier Scaling & Coloring
+        // Tier 0: 1.0x (Cyan), Tier 1: 1.2x (Armored Cobalt), Tier 2: 1.35x (Elite Gold/Flame)
+        const baseScale = t === 2 ? 1.35 : t === 1 ? 1.2 : 1.0;
+        const s = w > 1 ? Math.min(1.5, baseScale + (w - 1) * 0.05) : baseScale;
+
         const idx = blueCount * 16;
         blueArr[idx + 0] = s;
         blueArr[idx + 5] = s;
         blueArr[idx + 10] = s;
         blueArr[idx + 12] = x[slot];
-        blueArr[idx + 13] = y;
+        blueArr[idx + 13] = y * s;
         blueArr[idx + 14] = z[slot];
+
+        const cIdx = blueCount * 3;
+        if (t === 2) {
+          // Tier 2: Fiery Gold (#f59e0b -> r: 0.96, g: 0.62, b: 0.04)
+          blueColorArr[cIdx + 0] = 0.96;
+          blueColorArr[cIdx + 1] = 0.62;
+          blueColorArr[cIdx + 2] = 0.04;
+        } else if (t === 1) {
+          // Tier 1: Cobalt Armored (#2563eb -> r: 0.15, g: 0.39, b: 0.92)
+          blueColorArr[cIdx + 0] = 0.15;
+          blueColorArr[cIdx + 1] = 0.39;
+          blueColorArr[cIdx + 2] = 0.92;
+        } else {
+          // Tier 0: Bright Cyan (#38bdf8 -> r: 0.22, g: 0.74, b: 0.97)
+          blueColorArr[cIdx + 0] = 0.22;
+          blueColorArr[cIdx + 1] = 0.74;
+          blueColorArr[cIdx + 2] = 0.97;
+        }
+
         blueCount++;
       } else {
         // Team 1: Enemy Red
+        const s = w > 1 ? Math.min(1.4, 1.0 + (w - 1) * 0.08) : 1.0;
         const idx = redCount * 16;
         redArr[idx + 0] = s;
         redArr[idx + 5] = s;
@@ -141,6 +169,7 @@ export class MobRenderer {
 
     if (blueCount > 0) {
       this.blueMesh.instanceMatrix.needsUpdate = true;
+      (this.blueMesh.instanceColor as THREE.InstancedBufferAttribute).needsUpdate = true;
     }
     if (redCount > 0) {
       this.redMesh.instanceMatrix.needsUpdate = true;

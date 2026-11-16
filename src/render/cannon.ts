@@ -5,6 +5,10 @@ import { CannonSim } from '../sim/cannon';
 export class CannonRender {
   public group: THREE.Group;
   private cannonSim: CannonSim;
+  private domeMat: THREE.MeshLambertMaterial;
+  private muzzleMat: THREE.MeshBasicMaterial;
+  private ringMat: THREE.MeshBasicMaterial;
+  private lastTier: number = 0;
 
   constructor(scene: THREE.Scene, cannonSim: CannonSim) {
     this.cannonSim = cannonSim;
@@ -35,10 +39,10 @@ export class CannonRender {
 
     // 3. Turret Dome
     const domeGeo = new THREE.CylinderGeometry(0.45, 0.6, 0.35, 12);
-    const domeMat = new THREE.MeshLambertMaterial({
+    this.domeMat = new THREE.MeshLambertMaterial({
       color: CONFIG.COLORS.CANNON_DOME
     });
-    const dome = new THREE.Mesh(domeGeo, domeMat);
+    const dome = new THREE.Mesh(domeGeo, this.domeMat);
     dome.position.y = 0.45;
     this.group.add(dome);
 
@@ -55,23 +59,23 @@ export class CannonRender {
     // 5. High-contrast muzzle ring at barrel tip
     const muzzleGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.18, 10);
     muzzleGeo.rotateX(Math.PI / 2);
-    const muzzleMat = new THREE.MeshBasicMaterial({
+    this.muzzleMat = new THREE.MeshBasicMaterial({
       color: CONFIG.COLORS.CANNON_MUZZLE
     });
-    const muzzle = new THREE.Mesh(muzzleGeo, muzzleMat);
+    const muzzle = new THREE.Mesh(muzzleGeo, this.muzzleMat);
     muzzle.position.set(0, 0.45, 1.15);
     this.group.add(muzzle);
 
     // 6. Glowing aim / base ring on ground
     const ringGeo = new THREE.RingGeometry(0.85, 1.0, 24);
     ringGeo.rotateX(-Math.PI / 2);
-    const ringMat = new THREE.MeshBasicMaterial({
+    this.ringMat = new THREE.MeshBasicMaterial({
       color: CONFIG.COLORS.CANNON_RING,
       side: THREE.DoubleSide,
       transparent: true,
       opacity: 0.7
     });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
+    const ring = new THREE.Mesh(ringGeo, this.ringMat);
     ring.position.y = 0.02;
     this.group.add(ring);
 
@@ -82,6 +86,24 @@ export class CannonRender {
   public update(): void {
     // Sync rendered position from sim state
     this.group.position.x = this.cannonSim.x;
+
+    // Visual tier progression updates
+    if (this.cannonSim.tier !== this.lastTier) {
+      this.lastTier = this.cannonSim.tier;
+      if (this.lastTier === 2) {
+        this.domeMat.color.setHex(0x7c2d12);
+        this.muzzleMat.color.setHex(0xfbbf24);
+        this.ringMat.color.setHex(0xf59e0b);
+      } else if (this.lastTier === 1) {
+        this.domeMat.color.setHex(0x1e3a8a);
+        this.muzzleMat.color.setHex(0x60a5fa);
+        this.ringMat.color.setHex(0x2563eb);
+      } else {
+        this.domeMat.color.setHex(CONFIG.COLORS.CANNON_DOME);
+        this.muzzleMat.color.setHex(CONFIG.COLORS.CANNON_MUZZLE);
+        this.ringMat.color.setHex(CONFIG.COLORS.CANNON_RING);
+      }
+    }
   }
 
   public dispose(scene: THREE.Scene): void {

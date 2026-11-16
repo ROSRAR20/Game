@@ -8,6 +8,7 @@ import { CombatResolver } from './combat';
 import { WaveManager } from './waves';
 import { TowerManager } from './towers';
 import { BossManager } from './boss';
+import { PickupManager } from './pickups';
 import { getLevelGates, getLevel1Data } from '../data/level';
 import { getLevel1Waves } from '../data/waves';
 
@@ -21,6 +22,7 @@ export class Simulation {
   public waves: WaveManager;
   public towers: TowerManager;
   public bosses: BossManager;
+  public pickups: PickupManager;
   public isGameWon: boolean = false;
 
   private readonly initialSeed: number;
@@ -44,6 +46,7 @@ export class Simulation {
     const levelData = getLevel1Data();
     this.towers = new TowerManager(levelData.towers);
     this.bosses = new BossManager(levelData.bosses);
+    this.pickups = new PickupManager(levelData.pickups);
     this.isGameWon = false;
   }
 
@@ -190,6 +193,7 @@ export class Simulation {
     } else if (!this.isStressMode) {
       this.gates.update(this.pool, dt);
       this.waves.update(dt, this.pool, this.rng);
+      this.pickups.update(this.pool, this.cannon);
       this.towers.update(this.pool, this.rng);
       this.bosses.update(dt, this.pool, this.base);
       this.combat.resolveCombat(this.pool);
@@ -244,10 +248,8 @@ export class Simulation {
     // 1. Reset pool back to pristine state with ordered free-list
     resetMobPool(this.pool);
 
-    // 2. Reset cannon position and cooldowns
-    this.cannon.x = 0;
-    this.cannon.targetX = 0;
-    this.cannon.fireTimer = 0;
+    // 2. Reset cannon position, cooldowns, and tier
+    this.cannon.reset();
 
     // 3. Reset RNG back to initial seed
     this.rng.setSeed(seed);
@@ -255,11 +257,12 @@ export class Simulation {
     // 4. Reset base defense
     this.base.reset();
 
-    // 5. Reset gates, waves, towers, and bosses
+    // 5. Reset gates, waves, towers, bosses, and pickups
     this.gates.reset();
     this.waves.reset();
     this.towers.reset();
     this.bosses.reset();
+    this.pickups.reset();
     this.isGameWon = false;
 
     // 6. Reset timestep accumulator

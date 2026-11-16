@@ -19,6 +19,11 @@ export class CombatResolver {
   private readonly contactRadiusSq: number;
   private readonly maxContactsPerTick: number;
 
+  public justHadCombatHit = false;
+  public lastHitX = 0;
+  public lastHitZ = 0;
+  public justHadBaseBreach = false;
+
   constructor(
     spatialHash: SpatialHashGrid = new SpatialHashGrid(),
     maxUnits: number = CONFIG.MAX_UNITS
@@ -42,6 +47,7 @@ export class CombatResolver {
   public resolveCombat(pool: MobPool): CombatStats {
     let blueKilled = 0;
     let redKilled = 0;
+    this.justHadCombatHit = false;
 
     // 1. Bin all active Red units (Team 1) into spatial hash
     this.spatialHash.clear();
@@ -94,6 +100,9 @@ export class CombatResolver {
 
               if (distSq <= rDistSq) {
                 contacts++;
+                this.justHadCombatHit = true;
+                this.lastHitX = bx;
+                this.lastHitZ = bz;
 
                 const wb = pool.weight[bSlot];
                 const wr = pool.weight[rSlot];
@@ -138,6 +147,7 @@ export class CombatResolver {
    * Inflicts damage (weight * RED_MOB_BASE_DAMAGE) and despawns breaching units.
    */
   public checkBaseBreaches(pool: MobPool, baseDefense: BaseDefense): number {
+    this.justHadBaseBreach = false;
     if (baseDefense.isGameOver || pool.count === 0) return 0;
 
     let totalDamage = 0;
@@ -150,6 +160,7 @@ export class CombatResolver {
       if (pool.team[slot] === 1 && pool.z[slot] <= baseZ) {
         const dmg = pool.weight[slot] * damagePerUnit;
         totalDamage += dmg;
+        this.justHadBaseBreach = true;
         baseDefense.takeDamage(dmg);
         despawnMob(pool, slot);
 

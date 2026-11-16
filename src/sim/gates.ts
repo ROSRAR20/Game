@@ -138,6 +138,10 @@ export class GateManager {
   private cloneBuffer = new CloneRingBuffer();
   private rng: SeededRNG;
 
+  public justCrossedGate = false;
+  public lastCrossedGateX = 0;
+  public lastCrossedGateZ = 0;
+
   // Divider tracking per gate: tracks remainder of units passing through
   private divCounter: Map<number, number> = new Map();
 
@@ -158,6 +162,7 @@ export class GateManager {
   public reset(): void {
     this.cloneBuffer.clear();
     this.divCounter.clear();
+    this.justCrossedGate = false;
     for (const gate of this.gates) {
       gate.remainingValue = gate.value;
     }
@@ -220,6 +225,9 @@ export class GateManager {
     vz: number,
     immediateBudget: number
   ): number {
+    this.justCrossedGate = true;
+    this.lastCrossedGateX = unitX;
+    this.lastCrossedGateZ = gate.z;
     const unitWeight = pool.weight[passingSlot];
 
     switch (gate.kind) {
