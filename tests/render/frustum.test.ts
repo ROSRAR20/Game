@@ -47,9 +47,17 @@ describe('Frustum Ground Raycast', () => {
   });
 
   it('computes exact ground range for Distinct Presets A (Close), B (Medium), C (Far)', () => {
-    // Preset A: Close, yaw 15, pitch 52, fov 50, height 21, posX -4.8, posZ -4.0
-    const presetA = makeCamera(52, 15, 50, 21, -4.8, -4.0, 25);
-    const rangeA = computeFrustumGroundRange(presetA);
+    // User tuned camera: pitch 40, yaw 25.5, fov 56, height 20, posX -8.8, posZ -9, lookDist 16
+    const userCam = makeCamera(40, 25.5, 56, 20, -8.8, -9, 16);
+    const rangeUser = computeFrustumGroundRange(userCam);
+
+    console.log('User Tuned Camera Ground Range:', {
+      nearZ: Number(rangeUser.nearZ.toFixed(2)),
+      farZ: Number(rangeUser.farZ.toFixed(2)),
+      centerNearZ: Number(rangeUser.centerNearZ.toFixed(2)),
+      centerFarZ: Number(rangeUser.centerFarZ.toFixed(2)),
+      visibleRoadSpan: Number((rangeUser.farZ - rangeUser.nearZ).toFixed(2))
+    });
 
     // Preset B: Medium, yaw 25, pitch 55, fov 52, height 28, posX -8.0, posZ -3.5
     const presetB = makeCamera(55, 25, 52, 28, -8.0, -3.5, 30);
@@ -59,13 +67,8 @@ describe('Frustum Ground Raycast', () => {
     const presetC = makeCamera(56, 35, 54, 38, -11.0, -3.0, 40);
     const rangeC = computeFrustumGroundRange(presetC);
 
-    console.log('Preset A (Close - yaw 18, height 21):', {
-      nearZ: Number(rangeA.nearZ.toFixed(2)),
-      farZ: Number(rangeA.farZ.toFixed(2)),
-      centerNearZ: Number(rangeA.centerNearZ.toFixed(2)),
-      centerFarZ: Number(rangeA.centerFarZ.toFixed(2)),
-      visibleRoadSpan: Number((rangeA.farZ - rangeA.nearZ).toFixed(2))
-    });
+    // Preset A (User Tuned): pitch 40, yaw 25.5, fov 56, height 20, posX -8.8, posZ -9
+    const rangeA = rangeUser;
 
     console.log('Preset B (Medium - yaw 25, height 28):', {
       nearZ: Number(rangeB.nearZ.toFixed(2)),
@@ -83,9 +86,11 @@ describe('Frustum Ground Raycast', () => {
       visibleRoadSpan: Number((rangeC.farZ - rangeC.nearZ).toFixed(2))
     });
 
-    // Preset A visible span is around 35-40 units
-    expect(rangeA.farZ - rangeA.nearZ).toBeGreaterThan(32);
-    expect(rangeA.farZ - rangeA.nearZ).toBeLessThan(42);
+    // Preset A (User Tuned): visible ground range matches on-device verified values
+    expect(rangeA.nearZ).toBeCloseTo(-3.72, 1);
+    expect(rangeA.farZ).toBeCloseTo(84.91, 1);
+    expect(rangeA.centerNearZ).toBeCloseTo(-1.71, 1);
+    expect(rangeA.centerFarZ).toBeCloseTo(75.93, 1);
 
     // Presets are distinctly different in yaw and span
     expect(rangeB.farZ - rangeB.nearZ).toBeGreaterThan(45);

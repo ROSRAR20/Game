@@ -116,7 +116,7 @@ describe('World-X Pixel Vector Derivation (computeWorldXPixelVector)', () => {
 
   it('verifies that drag projection follows the thumb across camera Presets A, B, and C', () => {
     const presets = [
-      { name: 'Preset A (Close)', pos: [-4.8, 21, -4.0], pitch: 52, yaw: 15, fov: 50 },
+      { name: 'Preset A (Approved Tuned)', pos: [-8.8, 20, -9.0], pitch: 40, yaw: 25.5, fov: 56 },
       { name: 'Preset B (Medium)', pos: [-8.0, 28, -3.5], pitch: 55, yaw: 25, fov: 52 },
       { name: 'Preset C (Far / Wide)', pos: [-11.0, 38, -3.0], pitch: 56, yaw: 35, fov: 54 }
     ];

@@ -21,23 +21,23 @@ export const CONFIG = {
   MOB_HEIGHT: 0.6,
   MOB_MAX_Z: 105, // despawn threshold
 
-  // Camera tuning defaults (preset A is default; overridden by ?camPreset=a|b|c or live tuner ?camTune)
-  CAMERA_FOV: 50,
-  CAMERA_PITCH: 52, // degrees downward pitch from horizontal (50-60 range)
-  CAMERA_YAW: 15, // degrees horizontal yaw offset around Y
-  CAMERA_HEIGHT: 21, // camera Y elevation (close framing for large mob feel)
-  CAMERA_LOOK_AT_DISTANCE: 25, // distance along sightline to look-at target
-  CAMERA_POS_X: -4.8, // camera lateral offset to left of road
-  CAMERA_POS_Z: -4.0, // camera Z position
+  // Camera tuning defaults (approved device-tuned camera angle)
+  CAMERA_FOV: 56,
+  CAMERA_PITCH: 40, // degrees downward pitch from horizontal
+  CAMERA_YAW: 25.5, // degrees horizontal yaw offset around Y
+  CAMERA_HEIGHT: 20, // camera Y elevation
+  CAMERA_LOOK_AT_DISTANCE: 16, // distance along sightline to look-at target
+  CAMERA_POS_X: -8.8, // camera lateral offset to left of road
+  CAMERA_POS_Z: -9, // camera Z position
   CAMERA_NEAR: 0.1,
   CAMERA_FAR: 500,
-  CAMERA_OFFSET: { x: -4.8, y: 21, z: -4.0 },
+  CAMERA_OFFSET: { x: -8.8, y: 20, z: -9 },
   CAMERA_LOOK_AT: { x: 0, y: 1.0, z: 20 },
 
   // Horde carpet positioning (visible in top quarter of framed road)
   HORDE_CARPET: {
-    START_Z: 30,
-    LENGTH: 35
+    START_Z: 48,
+    LENGTH: 40
   },
 
   // Rendering & Performance budgets (Default DPR = 1.0 for this device class; fill rate constraint)
@@ -127,14 +127,14 @@ export interface CameraPresetConfig {
 
 export const CAMERA_PRESETS: Record<'a' | 'b' | 'c', CameraPresetConfig> = {
   a: {
-    name: 'Preset A (Close: yaw 15, pitch 52, fov 50, height 21, span ~38.6)',
-    fov: 50,
-    pitch: 52,
-    yaw: 15,
-    height: 21,
-    lookAtDistance: 25,
-    posX: -4.8,
-    posZ: -4.0
+    name: 'Preset A (Approved Tuned: pitch 40, yaw 25.5, fov 56, height 20, posX -8.8, posZ -9)',
+    fov: 56,
+    pitch: 40,
+    yaw: 25.5,
+    height: 20,
+    lookAtDistance: 16,
+    posX: -8.8,
+    posZ: -9
   },
   b: {
     name: 'Preset B (Medium: yaw 25, pitch 55, fov 52, height 28, span ~49.1)',
