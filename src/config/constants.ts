@@ -21,6 +21,28 @@ export const CONFIG = {
   MOB_HEIGHT: 0.6,
   MOB_MAX_Z: 105, // despawn threshold
 
+  // Base defense & combat (M3)
+  BASE_MAX_HP: 100,
+  BASE_Z: 0,
+  RED_MOB_BASE_DAMAGE: 1,
+  MAX_CONTACTS_PER_TICK: 10,
+
+  // Enemy wave parameters (M3)
+  WAVES: {
+    DEFAULT_SPEED: 2.5, // units/sec along -Z
+    MAX_SPEED: 4.0, // maximum enemy speed
+    SPAWN_Z_MIN: 10,
+    SPAWN_Z_MAX: 95
+  },
+
+  // Spatial hash grid parameters (M3)
+  SPATIAL_HASH: {
+    CELL_SIZE: 0.8,
+    COLS: 15, // ceil(ROAD_WIDTH / 0.8) = 15
+    ROWS: 125, // ceil(ROAD_LENGTH / 0.8) = 125
+    TOTAL_CELLS: 1875
+  },
+
   // Camera tuning defaults (approved device-tuned camera angle)
   CAMERA_FOV: 56,
   CAMERA_PITCH: 40, // degrees downward pitch from horizontal
