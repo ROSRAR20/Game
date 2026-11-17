@@ -11,8 +11,9 @@ import { BossRenderer } from './render/boss';
 import { PickupRenderer } from './render/pickups';
 import { ParticleVFX, ScreenShake } from './render/vfx';
 import { SoundManager } from './audio/sound';
-import { HapticsManager } from './platform/haptics';
+import { HapticsManager, SaveManager, PlatformLifecycle, configureDisplay } from './platform';
 import { HudController } from './ui/hud';
+import { MenuController } from './ui/menu';
 import { FarFieldHorde } from './render/far_field';
 import { BareStressTest } from './render/bare_stress';
 import { AdaptiveQualityManager } from './render/adaptive';
@@ -22,7 +23,7 @@ import { DebugOverlay } from './ui/debug';
 import { CameraTunerPanel } from './ui/cam_tuner';
 import { initRefOverlay } from './ui/ref_overlay';
 import { computeFrustumGroundRange } from './render/frustum';
-import { PlatformLifecycle, configureDisplay } from './platform';
+import { getLevelData, LevelData, TOTAL_LEVELS } from './data/level';
 
 function init(): void {
   const container = document.getElementById('game-container');
@@ -71,11 +72,14 @@ function init(): void {
     input.updateProjectionAxis(camera);
   });
 
-  // 6. Debug overlay & stress mode query
+  // 6. Debug overlay & query params
   const debug = new DebugOverlay();
   const stressCount = debug.getStressCount();
   const urlParams = new URLSearchParams(window.location.search);
   const useBareStress = urlParams.has('bare');
+  const scenario = urlParams.get('scenario');
+  const skipMenuParam = urlParams.has('skipMenu') || urlParams.has('bare') || !!scenario || stressCount > 0 || urlParams.has('debug');
+  const initialLevelParam = parseInt(urlParams.get('level') || '1', 10);
 
   // 7. Visual renderers & Juice systems
   const cannonRender = new CannonRender(scene, sim.cannon);
@@ -105,22 +109,85 @@ function init(): void {
   // State transition flags for audio/haptics
   let prevGameOver = false;
   let prevGameWon = false;
+  let isInMenu = !skipMenuParam;
 
-  // Initialize gameplay HUD (Base HP bar, Game Over modal, Victory modal, restart trigger)
-  const hud = new HudController(() => {
-    sim.restart();
-    towerRender.update(sim.towers.towers);
-    bossRender.update(sim.bosses.bosses);
+  const applyLevelVisuals = (levelData: LevelData) => {
+    gateRender.buildGates(sim.gates.getGates());
+    towerRender.buildTowers(sim.towers.towers);
+    bossRender.buildBosses(sim.bosses.bosses);
     pickupRender.update(0, sim.pickups.pickups, camera);
-    vfx.clear();
-    screenShake.reset();
-    prevGameOver = false;
-    prevGameWon = false;
-    hud.reset();
+    hud.setLevel(levelData);
+    hud.reset(sim.base.maxHp);
+  };
+
+  // Initialize gameplay HUD
+  const hud = new HudController({
+    onRestart: () => {
+      sim.restart();
+      const lvl = getLevelData(sim.currentLevelId);
+      applyLevelVisuals(lvl);
+      vfx.clear();
+      screenShake.reset();
+      prevGameOver = false;
+      prevGameWon = false;
+    },
+    onNextLevel: () => {
+      const nextId = Math.min(TOTAL_LEVELS, sim.currentLevelId + 1);
+      const lvl = sim.loadLevel(nextId);
+      applyLevelVisuals(lvl);
+      vfx.clear();
+      screenShake.reset();
+      prevGameOver = false;
+      prevGameWon = false;
+      SaveManager.save({ currentLevel: nextId });
+    },
+    onOpenMenu: () => {
+      isInMenu = true;
+      hud.hideGameOver();
+      hud.hideVictory();
+      menu.showMainMenu(SaveManager.get(), sim.currentLevelId);
+    }
+  });
+
+  // Initialize Main Menu & Level Select
+  const menu = new MenuController({
+    onStartLevel: (levelId: number) => {
+      isInMenu = false;
+      const lvl = sim.loadLevel(levelId);
+      applyLevelVisuals(lvl);
+      vfx.clear();
+      screenShake.reset();
+      prevGameOver = false;
+      prevGameWon = false;
+      SaveManager.save({ currentLevel: levelId });
+    },
+    onToggleSound: () => {
+      const isMuted = !SaveManager.get().soundMuted;
+      sound.setMuted(isMuted);
+      SaveManager.save({ soundMuted: isMuted });
+      return isMuted;
+    }
+  });
+
+  // Load persistent save data asynchronously
+  SaveManager.load().then((saveData) => {
+    sound.setMuted(saveData.soundMuted);
+    menu.updateSoundButton(saveData.soundMuted);
+
+    if (!skipMenuParam) {
+      const targetLvl = initialLevelParam || saveData.currentLevel || 1;
+      if (targetLvl !== sim.currentLevelId) {
+        const lvl = sim.loadLevel(targetLvl);
+        applyLevelVisuals(lvl);
+      }
+      menu.showMainMenu(saveData, targetLvl);
+    } else {
+      menu.hideMainMenu();
+      isInMenu = false;
+    }
   });
 
   let bareStress: BareStressTest | null = null;
-  const scenario = urlParams.get('scenario');
 
   if (scenario === 'combat') {
     sim.setCombatStressMode(1000, 1000);
@@ -134,13 +201,11 @@ function init(): void {
       console.info(`[SwarmGate] Gameplay mob stress mode active: ${stressCount} mobs`);
     }
   } else {
-    // Build level gates, guardian towers, and boss entities
-    gateRender.buildGates(sim.gates.getGates());
-    towerRender.buildTowers(sim.towers.towers);
-    bossRender.buildBosses(sim.bosses.bosses);
+    const initialLvl = getLevelData(sim.currentLevelId);
+    applyLevelVisuals(initialLvl);
   }
 
-  // 7. Platform initialization & lifecycle listeners
+  // 8. Platform initialization & lifecycle listeners
   PlatformLifecycle.addListener({
     onPause: () => {
       console.info('[SwarmGate] Simulation paused on app background');
@@ -148,6 +213,14 @@ function init(): void {
     onResume: () => {
       console.info('[SwarmGate] Simulation resumed on app foreground');
       lastTime = performance.now();
+    },
+    onBackButton: () => {
+      if (!isInMenu) {
+        isInMenu = true;
+        hud.hideGameOver();
+        hud.hideVictory();
+        menu.showMainMenu(SaveManager.get(), sim.currentLevelId);
+      }
     }
   });
 
@@ -164,10 +237,21 @@ function init(): void {
     __sound?: SoundManager;
     __vfx?: ParticleVFX;
     __screenShake?: ScreenShake;
+    __menu?: MenuController;
+    __loadLevel?: (id: number) => void;
+    __saveManager?: typeof SaveManager;
   }).__sim = sim;
   (window as unknown as { __sound?: SoundManager }).__sound = sound;
   (window as unknown as { __vfx?: ParticleVFX }).__vfx = vfx;
   (window as unknown as { __screenShake?: ScreenShake }).__screenShake = screenShake;
+  (window as unknown as { __menu?: MenuController }).__menu = menu;
+  (window as unknown as { __saveManager?: typeof SaveManager }).__saveManager = SaveManager;
+  (window as unknown as { __loadLevel?: (id: number) => void }).__loadLevel = (id: number) => {
+    const lvl = sim.loadLevel(id);
+    applyLevelVisuals(lvl);
+    isInMenu = false;
+    menu.hideMainMenu();
+  };
 
   (window as unknown as { __triggerGameOver?: () => void }).__triggerGameOver = () => {
     sim.base.takeDamage(CONFIG.BASE_MAX_HP);
@@ -181,6 +265,12 @@ function init(): void {
     for (const b of sim.bosses.bosses) {
       b.hp = 0;
       b.isDefeated = true;
+    }
+    for (let i = sim.pool.count - 1; i >= 0; i--) {
+      const slot = sim.pool.activeIndices[i];
+      if (sim.pool.team[slot] === 1) {
+        sim.pool.active[slot] = 0;
+      }
     }
     sim.waves.currentWaveIdx = sim.waves.waves.length;
     sim.isGameWon = true;
@@ -205,7 +295,7 @@ function init(): void {
     }
   };
 
-  // 8. Main animation loop
+  // 9. Main animation loop
   let lastTime = performance.now();
 
   function animate(now: number): void {
@@ -221,14 +311,16 @@ function init(): void {
     // Adaptive quality monitoring
     adaptive.update(dt * 1000);
 
-    // Update input (keyboard fallback, etc.)
-    input.update(dt);
+    // Update input (only if gameplay is active)
+    if (!isInMenu) {
+      input.update(dt);
+    }
 
     if (bareStress) {
       bareStress.update(dt);
       cannonRender.update();
-    } else {
-      // Step fixed 60 Hz simulation
+    } else if (!isInMenu) {
+      // Step fixed 60 Hz simulation during active gameplay
       sim.update(dt);
 
       // Sim events -> Juice & Haptics & Audio & VFX
@@ -299,6 +391,11 @@ function init(): void {
         sound.playVictory();
         HapticsManager.success();
         prevGameWon = true;
+
+        // Persist victory and stars
+        SaveManager.completeLevel(sim.currentLevelId, sim.base.hp).then((res) => {
+          console.info(`[SwarmGate] Level ${sim.currentLevelId} completed with ${res.stars} stars.`);
+        });
       }
 
       if (sim.base.isGameOver && !prevGameOver) {
@@ -326,6 +423,13 @@ function init(): void {
         towersRemaining,
         bossesRemaining
       );
+    } else {
+      // Idle backdrop rendering in menu
+      cannonRender.update();
+      mobRender.update(sim.pool);
+      towerRender.update(sim.towers.towers);
+      bossRender.update(sim.bosses.bosses);
+      pickupRender.update(dt, sim.pickups.pickups, camera);
     }
 
     renderer.render(scene, camera);

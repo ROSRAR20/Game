@@ -1,4 +1,11 @@
 import { CONFIG } from '../config/constants';
+import { LevelData } from '../data/level';
+
+export interface HudCallbacks {
+  onRestart: () => void;
+  onNextLevel: () => void;
+  onOpenMenu: () => void;
+}
 
 export class HudController {
   private baseHpText: HTMLElement | null = null;
@@ -6,18 +13,26 @@ export class HudController {
   private damageVignette: HTMLElement | null = null;
   private gameOverModal: HTMLElement | null = null;
   private restartBtn: HTMLElement | null = null;
+  private gameOverMenuBtn: HTMLElement | null = null;
   private victoryModal: HTMLElement | null = null;
   private replayBtn: HTMLElement | null = null;
+  private nextLevelBtn: HTMLElement | null = null;
+  private victoryMenuBtn: HTMLElement | null = null;
   private victoryBaseStatus: HTMLElement | null = null;
+  private victoryStarsEl: HTMLElement | null = null;
   private objTowersEl: HTMLElement | null = null;
   private objBossEl: HTMLElement | null = null;
+  private levelBadgeEl: HTMLElement | null = null;
+  private levelTitleEl: HTMLElement | null = null;
+  private btnPauseMenu: HTMLElement | null = null;
 
   private lastHp: number = CONFIG.BASE_MAX_HP;
   private vignetteTimeoutId: ReturnType<typeof setTimeout> | null = null;
-  private readonly onRestartCallback: () => void;
+  private readonly callbacks: HudCallbacks;
+  public currentLevelId: number = 1;
 
-  constructor(onRestart: () => void) {
-    this.onRestartCallback = onRestart;
+  constructor(callbacks: HudCallbacks) {
+    this.callbacks = callbacks;
     this.initDOM();
   }
 
@@ -29,24 +44,72 @@ export class HudController {
     this.damageVignette = document.getElementById('damage-vignette');
     this.gameOverModal = document.getElementById('game-over-modal');
     this.restartBtn = document.getElementById('btn-restart');
+    this.gameOverMenuBtn = document.getElementById('btn-gameover-menu');
     this.victoryModal = document.getElementById('victory-modal');
     this.replayBtn = document.getElementById('btn-replay');
+    this.nextLevelBtn = document.getElementById('btn-next-level');
+    this.victoryMenuBtn = document.getElementById('btn-victory-menu');
     this.victoryBaseStatus = document.getElementById('v-base-status');
+    this.victoryStarsEl = document.getElementById('v-stars');
     this.objTowersEl = document.getElementById('obj-towers');
     this.objBossEl = document.getElementById('obj-boss');
+    this.levelBadgeEl = document.getElementById('hud-level-badge');
+    this.levelTitleEl = document.getElementById('hud-level-title');
+    this.btnPauseMenu = document.getElementById('btn-pause-menu');
 
     if (this.restartBtn) {
       this.restartBtn.addEventListener('click', () => {
         this.hideGameOver();
-        this.onRestartCallback();
+        this.callbacks.onRestart();
+      });
+    }
+
+    if (this.gameOverMenuBtn) {
+      this.gameOverMenuBtn.addEventListener('click', () => {
+        this.hideGameOver();
+        this.callbacks.onOpenMenu();
       });
     }
 
     if (this.replayBtn) {
       this.replayBtn.addEventListener('click', () => {
         this.hideVictory();
-        this.onRestartCallback();
+        this.callbacks.onRestart();
       });
+    }
+
+    if (this.nextLevelBtn) {
+      this.nextLevelBtn.addEventListener('click', () => {
+        this.hideVictory();
+        this.callbacks.onNextLevel();
+      });
+    }
+
+    if (this.victoryMenuBtn) {
+      this.victoryMenuBtn.addEventListener('click', () => {
+        this.hideVictory();
+        this.callbacks.onOpenMenu();
+      });
+    }
+
+    if (this.btnPauseMenu) {
+      this.btnPauseMenu.addEventListener('click', () => {
+        this.callbacks.onOpenMenu();
+      });
+    }
+  }
+
+  public setLevel(level: LevelData): void {
+    this.currentLevelId = level.id;
+    if (this.levelBadgeEl) {
+      this.levelBadgeEl.textContent = `LVL ${level.id}`;
+    }
+    if (this.levelTitleEl) {
+      this.levelTitleEl.textContent = level.name.toUpperCase();
+    }
+    if (this.nextLevelBtn) {
+      // Hide next level button on final level
+      this.nextLevelBtn.style.display = level.id >= 5 ? 'none' : 'inline-flex';
     }
   }
 
@@ -100,7 +163,7 @@ export class HudController {
       }
     }
 
-    // 3. Modal presentation: Victory or Game Over
+    // 4. Modal presentation: Victory or Game Over
     if (isGameWon) {
       this.hideGameOver();
       this.showVictory(baseHp, maxHp);
@@ -142,8 +205,14 @@ export class HudController {
   }
 
   public showVictory(baseHp: number, maxHp: number): void {
+    const pct = (baseHp / maxHp) * 100;
+    const stars = pct >= 80 ? '⭐⭐⭐' : pct >= 40 ? '⭐⭐' : '⭐';
+
+    if (this.victoryStarsEl) {
+      this.victoryStarsEl.textContent = stars;
+    }
     if (this.victoryBaseStatus) {
-      this.victoryBaseStatus.textContent = `${Math.round(baseHp)} / ${maxHp} HP`;
+      this.victoryBaseStatus.textContent = `${Math.round(baseHp)} / ${maxHp} HP (${Math.round(pct)}%)`;
     }
     if (this.victoryModal && this.victoryModal.style.display !== 'flex') {
       this.victoryModal.style.display = 'flex';

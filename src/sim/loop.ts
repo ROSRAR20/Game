@@ -9,8 +9,7 @@ import { WaveManager } from './waves';
 import { TowerManager } from './towers';
 import { BossManager } from './boss';
 import { PickupManager } from './pickups';
-import { getLevelGates, getLevel1Data } from '../data/level';
-import { getLevel1Waves } from '../data/waves';
+import { getLevelGates, getLevelData, LevelData } from '../data/level';
 
 export class Simulation {
   public pool: MobPool;
@@ -24,6 +23,7 @@ export class Simulation {
   public bosses: BossManager;
   public pickups: PickupManager;
   public isGameWon: boolean = false;
+  public currentLevelId: number = 1;
 
   private readonly initialSeed: number;
   private accumulator: number = 0;
@@ -32,22 +32,35 @@ export class Simulation {
   private combatStressTargetBlue: number = 0;
   private combatStressTargetRed: number = 0;
 
-  constructor(seed: number = 42, capacity: number = CONFIG.MAX_UNITS) {
+  constructor(seed: number = 42, capacity: number = CONFIG.MAX_UNITS, initialLevel: number = 1) {
     this.initialSeed = seed;
+    this.currentLevelId = Math.max(1, Math.min(5, initialLevel));
     this.pool = createMobPool(capacity);
     this.cannon = new CannonSim();
     this.rng = new SeededRNG(seed);
+
+    const levelData = getLevelData(this.currentLevelId);
     this.gates = new GateManager(this.rng);
-    this.gates.setGates(getLevelGates());
+    this.gates.setGates(getLevelGates(this.currentLevelId));
     this.base = new BaseDefense(CONFIG.BASE_MAX_HP);
     this.combat = new CombatResolver();
-    this.waves = new WaveManager(getLevel1Waves());
-
-    const levelData = getLevel1Data();
+    this.waves = new WaveManager(levelData.waves);
     this.towers = new TowerManager(levelData.towers);
     this.bosses = new BossManager(levelData.bosses);
     this.pickups = new PickupManager(levelData.pickups);
     this.isGameWon = false;
+  }
+
+  public loadLevel(levelId: number): LevelData {
+    this.currentLevelId = Math.max(1, Math.min(5, Math.floor(levelId)));
+    const levelData = getLevelData(this.currentLevelId);
+    this.gates.setGates(getLevelGates(this.currentLevelId));
+    this.waves.setWaves(levelData.waves);
+    this.towers.setTowers(levelData.towers);
+    this.bosses.setBosses(levelData.bosses);
+    this.pickups.setPickups(levelData.pickups);
+    this.restart();
+    return levelData;
   }
 
   public setStressMode(targetCount: number): void {
@@ -258,11 +271,12 @@ export class Simulation {
     this.base.reset();
 
     // 5. Reset gates, waves, towers, bosses, and pickups
+    const levelData = getLevelData(this.currentLevelId);
     this.gates.reset();
     this.waves.reset();
     this.towers.reset();
     this.bosses.reset();
-    this.pickups.reset();
+    this.pickups.reset(levelData.pickups);
     this.isGameWon = false;
 
     // 6. Reset timestep accumulator

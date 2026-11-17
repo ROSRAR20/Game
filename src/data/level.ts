@@ -3,9 +3,15 @@ import { CONFIG } from '../config/constants';
 import { createGate, Gate } from '../sim/gates';
 import { WaveItemSchema } from './waves';
 import level1Json from './level1.json';
+import level2Json from './level2.json';
+import level3Json from './level3.json';
+import level4Json from './level4.json';
+import level5Json from './level5.json';
 
 const minRoadX = CONFIG.ROAD_X_MIN + CONFIG.MOB_RADIUS;
 const maxRoadX = CONFIG.ROAD_X_MAX - CONFIG.MOB_RADIUS;
+
+export const TOTAL_LEVELS = 5;
 
 export const GateItemSchema = z.object({
   id: z.number().int().positive(),
@@ -79,18 +85,32 @@ export type BossItem = z.infer<typeof BossItemSchema>;
 export type PickupItem = z.infer<typeof PickupItemSchema>;
 export type LevelData = z.infer<typeof LevelDataSchema>;
 
+const LEVEL_MAP: Record<number, unknown> = {
+  1: level1Json,
+  2: level2Json,
+  3: level3Json,
+  4: level4Json,
+  5: level5Json
+};
+
 export function validateLevel(data: unknown): LevelData {
   return LevelDataSchema.parse(data);
 }
 
+export function getLevelData(levelNumber: number = 1): LevelData {
+  const safeId = Math.max(1, Math.min(TOTAL_LEVELS, Math.floor(levelNumber)));
+  const json = LEVEL_MAP[safeId] || level1Json;
+  return validateLevel(json);
+}
+
 export function getLevel1Data(): LevelData {
-  return validateLevel(level1Json);
+  return getLevelData(1);
 }
 
 /**
- * Returns Level 1 gates for the simulation GateManager.
+ * Returns gates for a given level for the simulation GateManager.
  */
-export function getLevelGates(): Gate[] {
-  const level = getLevel1Data();
+export function getLevelGates(levelNumber: number = 1): Gate[] {
+  const level = getLevelData(levelNumber);
   return level.gates.map((g) => createGate(g.id, g.kind, g.value, g.x, g.width, g.z));
 }

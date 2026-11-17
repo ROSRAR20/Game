@@ -60,7 +60,7 @@
 
       #debug-overlay {
         position: absolute;
-        top: calc(env(safe-area-inset-top, 0px) + 8px);
+        top: calc(env(safe-area-inset-top, 0px) + 60px);
         left: calc(env(safe-area-inset-left, 0px) + 8px);
         background: rgba(0, 0, 0, 0.75);
         border: 1px solid rgba(255, 255, 255, 0.2);
@@ -85,6 +85,33 @@
         color: #94a3b8;
       }
 
+      /* In-game Pause / Back Button */
+      #btn-pause-menu {
+        position: absolute;
+        top: calc(env(safe-area-inset-top, 0px) + 8px);
+        left: calc(env(safe-area-inset-left, 0px) + 12px);
+        min-width: 48px;
+        min-height: 48px;
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        border-radius: 12px;
+        color: #e2e8f0;
+        font-size: 18px;
+        font-weight: 900;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: auto;
+        cursor: pointer;
+        z-index: 550;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      }
+
+      #btn-pause-menu:active {
+        transform: scale(0.95);
+        background: rgba(30, 41, 59, 0.95);
+      }
+
       /* Base HP HUD */
       #base-hp-container {
         position: absolute;
@@ -98,7 +125,6 @@
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
         pointer-events: none;
         z-index: 500;
-        transition: border-color 0.2s ease;
       }
 
       #base-hp-header {
@@ -198,6 +224,208 @@
         z-index: 600;
       }
 
+      /* Primary & Secondary Action Buttons (>= 48 dp touch targets) */
+      .action-btn {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 52px;
+        min-width: 190px;
+        padding: 14px 28px;
+        color: #ffffff;
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: 1px;
+        border: none;
+        border-radius: 9999px;
+        cursor: pointer;
+        touch-action: manipulation;
+        transition: transform 0.1s ease, filter 0.15s ease;
+      }
+
+      .action-btn:active {
+        transform: scale(0.96);
+        filter: brightness(0.9);
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+      }
+
+      .btn-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+      }
+
+      .btn-secondary {
+        background: rgba(51, 65, 85, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+        color: #e2e8f0;
+      }
+
+      .btn-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+      }
+
+      /* Main Menu Screen */
+      #main-menu {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at center, #111827 0%, #0b0f19 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 2500;
+        padding: 24px;
+        text-align: center;
+      }
+
+      .menu-logo-box {
+        margin-bottom: 28px;
+      }
+
+      .menu-title {
+        font-size: 38px;
+        font-weight: 900;
+        letter-spacing: 3px;
+        background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+        text-shadow: 0 0 24px rgba(56, 189, 248, 0.4);
+      }
+
+      .menu-subtitle {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        color: #94a3b8;
+        text-transform: uppercase;
+      }
+
+      .menu-mission-badge {
+        display: inline-block;
+        background: rgba(30, 41, 59, 0.85);
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        border-radius: 9999px;
+        padding: 8px 18px;
+        font-size: 13px;
+        font-weight: 800;
+        color: #38bdf8;
+        letter-spacing: 0.5px;
+        margin-bottom: 32px;
+      }
+
+      .menu-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        width: 100%;
+        max-width: 240px;
+      }
+
+      /* Level Select Modal */
+      #level-select-modal {
+        position: absolute;
+        inset: 0;
+        background: rgba(11, 15, 25, 0.94);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 2600;
+        padding: 24px;
+      }
+
+      .level-select-card {
+        background: #1e293b;
+        border: 2px solid rgba(56, 189, 248, 0.4);
+        border-radius: 20px;
+        padding: 24px 20px;
+        width: 100%;
+        max-width: 340px;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+      }
+
+      .level-select-title {
+        font-size: 22px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        color: #38bdf8;
+        margin-bottom: 18px;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      #level-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 22px;
+        max-height: 340px;
+        overflow-y: auto;
+      }
+
+      .level-card {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 12px 16px;
+        cursor: pointer;
+        min-height: 52px;
+        transition: border-color 0.15s ease, background 0.15s ease;
+      }
+
+      .level-card.selected {
+        border-color: #38bdf8;
+        background: rgba(2, 132, 199, 0.15);
+      }
+
+      .level-card.locked {
+        opacity: 0.45;
+        cursor: not-allowed;
+        border-color: rgba(255, 255, 255, 0.05);
+      }
+
+      .lvl-num {
+        font-size: 20px;
+        font-weight: 900;
+        color: #38bdf8;
+        min-width: 28px;
+      }
+
+      .level-card.locked .lvl-num {
+        color: #64748b;
+      }
+
+      .lvl-info {
+        flex: 1;
+        text-align: left;
+      }
+
+      .lvl-name {
+        font-size: 14px;
+        font-weight: 700;
+        color: #f1f5f9;
+        margin-bottom: 2px;
+      }
+
+      .lvl-badge {
+        font-size: 11px;
+        font-weight: 600;
+        color: #94a3b8;
+      }
+
       /* Game Over Modal */
       #game-over-modal {
         position: absolute;
@@ -237,32 +465,14 @@
         color: #94a3b8;
         font-size: 14px;
         line-height: 1.4;
-        margin-bottom: 28px;
+        margin-bottom: 24px;
       }
 
-      .restart-btn {
-        display: inline-flex;
-        justify-content: center;
+      .modal-btn-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
         align-items: center;
-        min-height: 52px;
-        min-width: 180px;
-        padding: 14px 28px;
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-        color: #ffffff;
-        font-size: 16px;
-        font-weight: 800;
-        letter-spacing: 1px;
-        border: none;
-        border-radius: 9999px;
-        cursor: pointer;
-        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
-        touch-action: manipulation;
-        transition: transform 0.1s ease, filter 0.15s ease;
-      }
-
-      .restart-btn:active {
-        transform: scale(0.96);
-        filter: brightness(0.9);
       }
 
       /* Victory Modal */
@@ -284,7 +494,7 @@
         background: #1e293b;
         border: 2px solid #10b981;
         border-radius: 20px;
-        padding: 32px 24px;
+        padding: 30px 24px;
         text-align: center;
         max-width: 320px;
         width: 100%;
@@ -296,15 +506,21 @@
         font-size: 26px;
         font-weight: 900;
         letter-spacing: 1.5px;
-        margin-bottom: 8px;
+        margin-bottom: 4px;
         text-transform: uppercase;
+      }
+
+      #v-stars {
+        font-size: 28px;
+        letter-spacing: 4px;
+        margin-bottom: 12px;
       }
 
       .victory-subtitle {
         color: #94a3b8;
-        font-size: 14px;
+        font-size: 13px;
         line-height: 1.4;
-        margin-bottom: 20px;
+        margin-bottom: 18px;
       }
 
       .victory-stats {
@@ -312,7 +528,7 @@
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 12px;
         padding: 10px 14px;
-        margin-bottom: 24px;
+        margin-bottom: 20px;
       }
 
       .v-stat {
@@ -334,38 +550,16 @@
         color: #10b981;
         font-weight: 700;
       }
-
-      .replay-btn {
-        display: inline-flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 52px;
-        min-width: 180px;
-        padding: 14px 28px;
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: #ffffff;
-        font-size: 16px;
-        font-weight: 800;
-        letter-spacing: 1px;
-        border: none;
-        border-radius: 9999px;
-        cursor: pointer;
-        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
-        touch-action: manipulation;
-        transition: transform 0.1s ease, filter 0.15s ease;
-      }
-
-      .replay-btn:active {
-        transform: scale(0.96);
-        filter: brightness(0.9);
-      }
     </style>
   </head>
   <body>
     <div id="game-container">
       <canvas id="game-canvas"></canvas>
       <div id="damage-vignette"></div>
+
+      <!-- In-Game HUD Overlay -->
       <div id="hud-overlay">
+        <button id="btn-pause-menu" type="button" aria-label="Open Menu">☰</button>
         <div id="base-hp-container">
           <div id="base-hp-header">
             <span class="base-hp-title">BASE DEFENSE</span>
@@ -377,8 +571,8 @@
         </div>
         <div id="level-banner">
           <div class="level-title-row">
-            <span class="level-badge">LVL 1</span>
-            <span class="level-title">DESERT OUTPOST</span>
+            <span id="hud-level-badge" class="level-badge">LVL 1</span>
+            <span id="hud-level-title" class="level-title">DESERT OUTPOST</span>
           </div>
           <div class="level-objectives">
             <span id="obj-towers" class="obj-tag">TOWER: 1</span>
@@ -399,22 +593,57 @@
           <div class="metric"><span class="label">Z-RNG:</span><span id="dbg-zrange">0 - 0</span></div>
         </div>
       </div>
+
+      <!-- Main Menu Screen -->
+      <div id="main-menu">
+        <div class="menu-logo-box">
+          <h1 class="menu-title">SWARM GATE</h1>
+          <p class="menu-subtitle">PORTRAIT 3D ARCADE MOB SHOOTER</p>
+        </div>
+        <div id="menu-selected-level" class="menu-mission-badge">MISSION 1 — DESERT OUTPOST</div>
+        <div class="menu-actions">
+          <button id="btn-play" class="action-btn btn-primary" type="button">PLAY MISSION</button>
+          <button id="btn-level-select" class="action-btn btn-secondary" type="button">SELECT MISSION</button>
+          <button id="btn-sound-toggle" class="action-btn btn-secondary" type="button">🔊 SOUND: ON</button>
+        </div>
+      </div>
+
+      <!-- Level Select Modal -->
+      <div id="level-select-modal">
+        <div class="level-select-card">
+          <h2 class="level-select-title">SELECT MISSION</h2>
+          <div id="level-grid"></div>
+          <button id="btn-close-level-select" class="action-btn btn-secondary" style="width: 100%; min-width: 100%;" type="button">BACK</button>
+        </div>
+      </div>
+
+      <!-- Game Over Modal -->
       <div id="game-over-modal">
         <div class="game-over-card">
           <h1 class="game-over-title">BASE DESTROYED</h1>
           <p class="game-over-subtitle">The horde reached your defense line.</p>
-          <button id="btn-restart" class="restart-btn" type="button">RESTART MISSION</button>
+          <div class="modal-btn-stack">
+            <button id="btn-restart" class="action-btn btn-danger" type="button">RESTART MISSION</button>
+            <button id="btn-gameover-menu" class="action-btn btn-secondary" type="button">MAIN MENU</button>
+          </div>
         </div>
       </div>
+
+      <!-- Victory Modal -->
       <div id="victory-modal">
         <div class="victory-card">
           <h1 class="victory-title">MISSION CLEARED</h1>
-          <p class="victory-subtitle">All towers and the boss guardian have been eliminated!</p>
+          <div id="v-stars">⭐⭐⭐</div>
+          <p class="victory-subtitle">All towers and guardian bosses have been eliminated!</p>
           <div class="victory-stats">
             <div class="v-stat"><span class="v-label">OBJECTIVES:</span><span class="v-val">100% SECURED</span></div>
             <div class="v-stat"><span class="v-label">BASE STATUS:</span><span id="v-base-status" class="v-val">100 / 100 HP</span></div>
           </div>
-          <button id="btn-replay" class="replay-btn" type="button">PLAY AGAIN</button>
+          <div class="modal-btn-stack">
+            <button id="btn-next-level" class="action-btn btn-success" type="button">NEXT LEVEL</button>
+            <button id="btn-replay" class="action-btn btn-primary" type="button">PLAY AGAIN</button>
+            <button id="btn-victory-menu" class="action-btn btn-secondary" type="button">MAIN MENU</button>
+          </div>
         </div>
       </div>
     </div>

@@ -1,0 +1,64 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.8"
+        android:scaleY="0.8"
+        android:translateX="10.8"
+        android:translateY="10.8">
+        <!-- Outer Glowing Gate Arch -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#38bdf8"
+            android:strokeWidth="4"
+            android:strokeLineCap="round"
+            android:pathData="M30,76 A28,28 0 1,1 78,76" />
+        
+        <!-- Energy Field Sparks Inside Gate -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#f59e0b"
+            android:strokeWidth="2.5"
+            android:strokeLineCap="round"
+            android:pathData="M38,54 L70,54" />
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#f59e0b"
+            android:strokeWidth="2"
+            android:strokeLineCap="round"
+            android:pathData="M44,46 L64,46" />
+
+        <!-- Cannon Turret Base Chassis -->
+        <path
+            android:fillColor="#1e293b"
+            android:strokeColor="#38bdf8"
+            android:strokeWidth="2"
+            android:pathData="M40,78 L68,78 A6,6 0 0,1 74,84 L34,84 A6,6 0 0,1 40,78 Z" />
+
+        <!-- Cannon Turret Dome -->
+        <path
+            android:fillColor="#2563eb"
+            android:strokeColor="#60a5fa"
+            android:strokeWidth="1.5"
+            android:pathData="M46,78 A8,8 0 0,1 62,78 Z" />
+
+        <!-- Cannon Barrel (Forward Aimed Upwards) -->
+        <path
+            android:fillColor="#0284c7"
+            android:strokeColor="#38bdf8"
+            android:strokeWidth="1.5"
+            android:pathData="M51,78 L51,52 L57,52 L57,78 Z" />
+
+        <!-- Barrel Muzzle Ring -->
+        <path
+            android:fillColor="#f59e0b"
+            android:pathData="M49,50 L59,50 L59,54 L49,54 Z" />
+
+        <!-- Projectile Energy Core -->
+        <path
+            android:fillColor="#38bdf8"
+            android:pathData="M54,34 A4,4 0 1,1 54,42 A4,4 0 1,1 54,34 Z" />
+    </group>
+</vector>
