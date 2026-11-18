@@ -238,5 +238,43 @@ describe('Milestone M2 Gates & Clone Math', () => {
       // 10 units * 2 (1 original + 1 clone each) = 20 units total
       expect(pool.count).toBe(20);
     });
+
+    it('chain of 3 add-1 gates turns 1 unit into 8 (clone cap off)', () => {
+      const rng = new SeededRNG(999);
+      const pool = createMobPool(100);
+      const gateManager = new GateManager(rng);
+
+      // 3 consecutive add-1 gates at Z = 10, Z = 15, Z = 20
+      const g1 = createGate(11, 'add', 1, -5.1, 1.8, 10);
+      const g2 = createGate(12, 'add', 1, -5.1, 1.8, 15);
+      const g3 = createGate(13, 'add', 1, -5.1, 1.8, 20);
+      gateManager.setGates([g1, g2, g3]);
+
+      // Spawn 1 unit before gate 1
+      spawnMob(pool, -5.1, 9.8, 0, 12, 0);
+      expect(pool.count).toBe(1);
+
+      // Pass Gate 1 (Z = 10): 1 unit in -> 2 units out (1 original + 1 clone)
+      for (let i = 0; i < pool.count; i++) {
+        pool.z[pool.activeIndices[i]] = 10.2;
+      }
+      gateManager.update(pool, 1 / 60);
+      expect(pool.count).toBe(2);
+
+      // Pass Gate 2 (Z = 15): 2 units in -> 4 units out
+      for (let i = 0; i < pool.count; i++) {
+        pool.z[pool.activeIndices[i]] = 15.2;
+      }
+      gateManager.update(pool, 1 / 60);
+      expect(pool.count).toBe(4);
+
+      // Pass Gate 3 (Z = 20): 4 units in -> 8 units out
+      for (let i = 0; i < pool.count; i++) {
+        const slot = pool.activeIndices[i];
+        pool.z[slot] = 20.1;
+      }
+      gateManager.update(pool, 1 / 60);
+      expect(pool.count).toBe(8);
+    });
   });
 });

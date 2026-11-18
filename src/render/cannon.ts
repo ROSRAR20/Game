@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { CONFIG } from '../config/constants';
 import { CannonSim } from '../sim/cannon';
 
@@ -14,28 +15,32 @@ export class CannonRender {
     this.cannonSim = cannonSim;
     this.group = new THREE.Group();
 
-    // 1. Chassis platform
+    // 1. Unified Chassis and Side Treads (merged into 1 mesh, saves 2 draw calls!)
     const chassisGeo = new THREE.BoxGeometry(1.5, 0.3, 1.2);
+    chassisGeo.translate(0, 0.15, 0);
+
+    const leftTreadGeo = new THREE.BoxGeometry(0.35, 0.35, 1.3);
+    leftTreadGeo.translate(-0.82, 0.175, 0);
+
+    const rightTreadGeo = new THREE.BoxGeometry(0.35, 0.35, 1.3);
+    rightTreadGeo.translate(0.82, 0.175, 0);
+
+    const mergedChassisGeo = BufferGeometryUtils.mergeGeometries(
+      [chassisGeo, leftTreadGeo, rightTreadGeo],
+      false
+    );
+    if (!mergedChassisGeo) {
+      throw new Error('[CannonRender] mergeGeometries returned null');
+    }
+    chassisGeo.dispose();
+    leftTreadGeo.dispose();
+    rightTreadGeo.dispose();
+
     const chassisMat = new THREE.MeshLambertMaterial({
       color: CONFIG.COLORS.CANNON_CHASSIS
     });
-    const chassis = new THREE.Mesh(chassisGeo, chassisMat);
-    chassis.position.y = 0.15;
+    const chassis = new THREE.Mesh(mergedChassisGeo, chassisMat);
     this.group.add(chassis);
-
-    // 2. Heavy side treads
-    const treadGeo = new THREE.BoxGeometry(0.35, 0.35, 1.3);
-    const treadMat = new THREE.MeshLambertMaterial({
-      color: CONFIG.COLORS.CANNON_TREADS
-    });
-
-    const leftTread = new THREE.Mesh(treadGeo, treadMat);
-    leftTread.position.set(-0.82, 0.175, 0);
-    this.group.add(leftTread);
-
-    const rightTread = new THREE.Mesh(treadGeo, treadMat);
-    rightTread.position.set(0.82, 0.175, 0);
-    this.group.add(rightTread);
 
     // 3. Turret Dome
     const domeGeo = new THREE.CylinderGeometry(0.45, 0.6, 0.35, 12);

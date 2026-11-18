@@ -2,14 +2,17 @@
   "id": 1,
   "name": "Desert Outpost",
   "gates": [
-    { "id": 1, "kind": "add", "value": 5, "x": -3.0, "width": 6.0, "z": 18.0 },
+    { "id": 11, "kind": "add", "value": 1, "x": -5.1, "width": 1.8, "z": 9.5 },
+    { "id": 12, "kind": "add", "value": 1, "x": -5.1, "width": 1.8, "z": 12.5 },
+    { "id": 13, "kind": "add", "value": 1, "x": -5.1, "width": 1.8, "z": 15.5 },
+    { "id": 1, "kind": "add", "value": 5, "x": -2.1, "width": 4.2, "z": 18.0 },
     { "id": 2, "kind": "mul", "value": 2, "x": 3.0, "width": 6.0, "z": 18.0 }
   ],
   "towers": [
     {
       "id": 1,
-      "x": 0.0,
-      "z": 30.0,
+      "x": 4.2,
+      "z": 28.0,
       "radius": 1.2,
       "maxHp": 40,
       "rewardType": "burst_units",
@@ -31,9 +34,9 @@
     {
       "id": 201,
       "kind": "upgrade",
-      "x": 0.0,
-      "z": 24.0,
-      "radius": 1.5
+      "x": 4.2,
+      "z": 22.0,
+      "radius": 1.2
     }
   ],
   "waves": [

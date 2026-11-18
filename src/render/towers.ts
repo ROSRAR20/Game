@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { TowerSim } from '../sim/towers';
 
 interface TowerVisual {
@@ -28,20 +29,38 @@ export class TowerRenderer {
       const group = new THREE.Group();
       group.position.set(tower.x, 0, tower.z);
 
-      // 1. Fortified stone base geometry (low-poly 8-sided turret)
+      // 1. Pedestal platform geometry (broad beveled stone/metal base on ground)
+      const pedestalGeo = new THREE.CylinderGeometry(
+        tower.radius * 1.35,
+        tower.radius * 1.55,
+        0.5,
+        8
+      );
+      pedestalGeo.translate(0, 0.25, 0);
+
+      // 2. Fortified stone turret body
       const baseGeo = new THREE.CylinderGeometry(
         tower.radius * 0.9,
         tower.radius * 1.15,
         2.6,
         8
       );
+      baseGeo.translate(0, 1.8, 0);
+
+      // Merge pedestal + turret body into a single geometry (0 additional draw calls!)
+      const mergedBaseGeo = BufferGeometryUtils.mergeGeometries([pedestalGeo, baseGeo], false);
+      if (!mergedBaseGeo) {
+        throw new Error('[TowerRenderer] mergeGeometries returned null. Attributes mismatch.');
+      }
+      pedestalGeo.dispose();
+      baseGeo.dispose();
+
       const baseMat = new THREE.MeshLambertMaterial({
         color: 0x334155,
         emissive: 0x0f172a,
         emissiveIntensity: 0.3
       });
-      const baseMesh = new THREE.Mesh(baseGeo, baseMat);
-      baseMesh.position.y = 1.3;
+      const baseMesh = new THREE.Mesh(mergedBaseGeo, baseMat);
       group.add(baseMesh);
 
       // Battlements ring
@@ -57,10 +76,10 @@ export class TowerRenderer {
         emissiveIntensity: 0.4
       });
       const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-      ringMesh.position.y = 2.7;
+      ringMesh.position.y = 3.2;
       group.add(ringMesh);
 
-      // 2. Road-aligned 3D HP number badge
+      // 3. Road-aligned 3D HP number badge
       const canvas = document.createElement('canvas');
       canvas.width = 256;
       canvas.height = 128;
@@ -76,7 +95,7 @@ export class TowerRenderer {
         side: THREE.DoubleSide
       });
       const badgeMesh = new THREE.Mesh(badgeGeo, badgeMat);
-      badgeMesh.position.y = 3.6;
+      badgeMesh.position.y = 4.1;
       // Strictly parallel to road cross-section (matches gate banners)
       badgeMesh.rotation.y = Math.PI;
       group.add(badgeMesh);
@@ -118,31 +137,31 @@ export class TowerRenderer {
     }
   }
 
-  private drawBadge(visual: TowerVisual, hp: number, maxHp: number): void {
+  private drawBadge(visual: TowerVisual, hp: number, _maxHp: number): void {
     const { canvas, context, texture } = visual;
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     // Pill background
-    context.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    context.fillStyle = 'rgba(11, 15, 25, 0.95)';
     context.strokeStyle = '#38bdf8';
     context.lineWidth = 6;
     context.beginPath();
-    context.roundRect(10, 10, canvas.width - 20, canvas.height - 20, 24);
+    context.roundRect(8, 8, canvas.width - 16, canvas.height - 16, 20);
     context.fill();
     context.stroke();
 
     // HP Title
     context.fillStyle = '#94a3b8';
-    context.font = 'bold 24px -apple-system, sans-serif';
+    context.font = 'bold 22px -apple-system, sans-serif';
     context.textAlign = 'center';
     context.textBaseline = 'top';
-    context.fillText('TOWER HP', canvas.width / 2, 22);
+    context.fillText('HP', canvas.width / 2, 16);
 
     // Numeric HP value
     context.fillStyle = '#ffffff';
-    context.font = '900 48px -apple-system, sans-serif';
+    context.font = '900 52px -apple-system, sans-serif';
     context.textBaseline = 'bottom';
-    context.fillText(`${hp} / ${maxHp}`, canvas.width / 2, canvas.height - 18);
+    context.fillText(`${hp}`, canvas.width / 2, canvas.height - 14);
 
     texture.needsUpdate = true;
   }

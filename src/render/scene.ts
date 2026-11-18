@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { CONFIG } from '../config/constants';
 
 export interface GameScene {
@@ -37,49 +38,48 @@ export function createScene(): GameScene {
   const roadMesh = new THREE.Mesh(roadGeometry, roadMaterial);
   scene.add(roadMesh);
 
-  // Side curbs / fences along edges (X = -6 and X = +6)
-  const curbGeo = new THREE.BoxGeometry(0.3, 0.4, CONFIG.ROAD_LENGTH);
+  // Side curbs / fences along edges (X = -6 and X = +6) merged into 1 mesh
+  const leftCurbGeo = new THREE.BoxGeometry(0.3, 0.4, CONFIG.ROAD_LENGTH);
+  leftCurbGeo.translate(-CONFIG.ROAD_WIDTH / 2, 0.2, CONFIG.ROAD_LENGTH / 2);
+
+  const rightCurbGeo = new THREE.BoxGeometry(0.3, 0.4, CONFIG.ROAD_LENGTH);
+  rightCurbGeo.translate(CONFIG.ROAD_WIDTH / 2, 0.2, CONFIG.ROAD_LENGTH / 2);
+
+  const mergedCurbsGeo = BufferGeometryUtils.mergeGeometries([leftCurbGeo, rightCurbGeo], false);
+  leftCurbGeo.dispose();
+  rightCurbGeo.dispose();
+
   const curbMat = new THREE.MeshLambertMaterial({ color: CONFIG.COLORS.FENCE });
+  const curbsMesh = new THREE.Mesh(mergedCurbsGeo || new THREE.BufferGeometry(), curbMat);
+  scene.add(curbsMesh);
 
-  const leftCurb = new THREE.Mesh(curbGeo, curbMat);
-  leftCurb.position.set(-CONFIG.ROAD_WIDTH / 2, 0.2, CONFIG.ROAD_LENGTH / 2);
-  scene.add(leftCurb);
-
-  const rightCurb = new THREE.Mesh(curbGeo, curbMat);
-  rightCurb.position.set(CONFIG.ROAD_WIDTH / 2, 0.2, CONFIG.ROAD_LENGTH / 2);
-  scene.add(rightCurb);
-
-  // Center dashed line or lane dividers (opaque, no transparent passes)
+  // Center dashed line and start line merged into 1 mesh
   const laneGeo = new THREE.PlaneGeometry(0.2, CONFIG.ROAD_LENGTH);
   laneGeo.rotateX(-Math.PI / 2);
   laneGeo.translate(0, 0.01, CONFIG.ROAD_LENGTH / 2);
-  const laneMat = new THREE.MeshBasicMaterial({
-    color: CONFIG.COLORS.ROAD_MARKING,
-    transparent: false
-  });
-  const laneMesh = new THREE.Mesh(laneGeo, laneMat);
-  scene.add(laneMesh);
 
-  // Cannon start line indicator at Z = CANNON_Z (opaque)
   const startLineGeo = new THREE.PlaneGeometry(CONFIG.ROAD_WIDTH, 0.15);
   startLineGeo.rotateX(-Math.PI / 2);
   startLineGeo.translate(0, 0.015, CONFIG.CANNON_Z);
-  const startLineMat = new THREE.MeshBasicMaterial({
-    color: CONFIG.COLORS.ROAD_EDGE,
+
+  const mergedMarkingsGeo = BufferGeometryUtils.mergeGeometries([laneGeo, startLineGeo], false);
+  laneGeo.dispose();
+  startLineGeo.dispose();
+
+  const markingsMat = new THREE.MeshBasicMaterial({
+    color: CONFIG.COLORS.ROAD_MARKING,
     transparent: false
   });
-  const startLine = new THREE.Mesh(startLineGeo, startLineMat);
-  scene.add(startLine);
+  const markingsMesh = new THREE.Mesh(mergedMarkingsGeo || new THREE.BufferGeometry(), markingsMat);
+  scene.add(markingsMesh);
 
   const dispose = () => {
     roadGeometry.dispose();
     roadMaterial.dispose();
-    curbGeo.dispose();
+    mergedCurbsGeo?.dispose();
     curbMat.dispose();
-    laneGeo.dispose();
-    laneMat.dispose();
-    startLineGeo.dispose();
-    startLineMat.dispose();
+    mergedMarkingsGeo?.dispose();
+    markingsMat.dispose();
   };
 
   return { scene, roadMesh, dispose };

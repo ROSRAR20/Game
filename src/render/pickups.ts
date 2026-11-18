@@ -7,6 +7,7 @@ import { PickupSim } from '../sim/pickups';
  */
 export class PickupRenderer {
   private group: THREE.Group;
+  private tileMesh: THREE.Mesh;
   private gemMesh: THREE.Mesh;
   private ringMesh: THREE.Mesh;
   private badgeMesh: THREE.Mesh;
@@ -15,6 +16,17 @@ export class PickupRenderer {
 
   constructor(scene: THREE.Scene) {
     this.group = new THREE.Group();
+
+    // 0. Reward / Power-Up ground tile platform (sitting on road shoulder at Y = 0.04)
+    const tileGeom = new THREE.CylinderGeometry(1.05, 1.25, 0.08, 8);
+    const tileMat = new THREE.MeshLambertMaterial({
+      color: 0x1e293b,
+      emissive: 0xd97706,
+      emissiveIntensity: 0.35
+    });
+    this.tileMesh = new THREE.Mesh(tileGeom, tileMat);
+    this.tileMesh.position.y = 0.04;
+    this.group.add(this.tileMesh);
 
     // 1. Central floating gem (Golden Octahedron)
     const gemGeom = new THREE.OctahedronGeometry(0.45, 0);

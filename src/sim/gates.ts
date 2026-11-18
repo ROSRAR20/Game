@@ -193,13 +193,18 @@ export class GateManager {
         const gate = this.gates[g];
 
         // Check if unit crossed gate plane this tick
-        if (prevZ <= gate.z && currZ >= gate.z) {
+        if (prevZ <= gate.z + 1e-4 && currZ >= gate.z) {
           // Check lateral boundaries
           const halfWidth = gate.width / 2;
           if (unitX >= gate.x - halfWidth && unitX <= gate.x + halfWidth) {
             // Check gate state: once a unit passes a gate, it cannot trigger it again
             if (unitLastGateId !== gate.id) {
               pool.lastGateId[slot] = gate.id;
+
+              // Final left-lane gate (Gate 13): impart inward lateral momentum towards road center
+              if (gate.id === 13) {
+                pool.vx[slot] = 2.5;
+              }
 
               const spawned = this.handleGateTrigger(
                 gate,
@@ -298,7 +303,11 @@ export class GateManager {
     const spawnZ = gate.z + CONFIG.GATES.PLANE_OFFSET_Z;
 
     const laneMinX = gate.x - gate.width / 2 + CONFIG.MOB_RADIUS + 0.1;
-    const laneMaxX = gate.x + gate.width / 2 - CONFIG.MOB_RADIUS - 0.1;
+    // For final left column gate (Gate 13), allow lateral fan expansion inward towards center
+    const laneMaxX =
+      gate.id === 13
+        ? -1.8
+        : gate.x + gate.width / 2 - CONFIG.MOB_RADIUS - 0.1;
 
     for (let c = 0; c < count; c++) {
       // Fan out clones laterally across the lane around the parent mob
@@ -308,10 +317,13 @@ export class GateManager {
           : ((c + 0.5) - count / 2) * Math.min(0.65, (gate.width * 0.75) / count) +
             (this.rng.nextFloat() - 0.5) * 0.2;
 
-      const cloneX = Math.max(laneMinX, Math.min(laneMaxX, centerX + fanOffset));
+      const cloneX = Math.max(laneMinX, Math.min(laneMaxX, centerX + (gate.id === 13 ? Math.abs(fanOffset) * 1.5 : fanOffset)));
 
       // Small lateral expansion impulse so the mob crowd blossoms naturally
-      const cloneVx = fanOffset * 0.8;
+      let cloneVx = fanOffset * 0.8;
+      if (gate.id === 13) {
+        cloneVx = Math.max(1.5, cloneVx + 2.5);
+      }
 
       if (spawnedImmediate < immediateBudget) {
         spawnMob(

@@ -38,17 +38,17 @@ test.describe('Milestone M5 Juice: Audio, Haptics, VFX, and Unit Tiers', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/?debug');
 
-    // Spawn player mobs right before pickup at Z=24
+    // Spawn player mobs right before pickup at X=4.2, Z=22.0
     await page.evaluate(() => {
       const win = window as unknown as {
         __sim?: {
           cannon: { tier: number };
           pickups: { pickups: Array<{ isCollected: boolean }> };
         };
-        __spawnBlueMobs?: (count: number, z: number) => void;
+        __spawnBlueMobs?: (count: number, z: number, x?: number) => void;
       };
       if (win.__spawnBlueMobs) {
-        win.__spawnBlueMobs(10, 23.0);
+        win.__spawnBlueMobs(10, 21.0, 4.2);
       }
     });
 

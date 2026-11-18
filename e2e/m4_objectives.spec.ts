@@ -157,7 +157,7 @@ test.describe('Milestone M4 Objectives: Towers, Boss, and Victory', () => {
       };
     });
     console.log('[NATURAL GAMEPLAY STATE]:', state);
-    expect(state.towerZ).toBe(30);
+    expect(state.towerZ).toBe(28);
     expect(state.bossZ).toBeLessThan(44.0); // Boss is actively marching down!
   });
 });

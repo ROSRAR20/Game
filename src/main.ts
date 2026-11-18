@@ -192,6 +192,20 @@ function init(): void {
   if (scenario === 'combat') {
     sim.setCombatStressMode(1000, 1000);
     console.info('[SwarmGate] Combat stress scenario active: 1,000 Blue vs 1,000 Red (2,000 active units)');
+  } else if (scenario === 'level1_2500' || scenario === 'stress2500') {
+    const l1 = getLevelData(1);
+    applyLevelVisuals(l1);
+    sim.setStressMode(2500);
+    isInMenu = false;
+    menu.hideMainMenu();
+    console.info('[SwarmGate] Level 1 real data stress scenario active: 2,500 units');
+  } else if (scenario === 'level1_3000' || scenario === 'stress3000') {
+    const l1 = getLevelData(1);
+    applyLevelVisuals(l1);
+    sim.setStressMode(3000);
+    isInMenu = false;
+    menu.hideMainMenu();
+    console.info('[SwarmGate] Level 1 real data stress scenario active: 3,000 units');
   } else if (stressCount > 0) {
     if (useBareStress) {
       bareStress = new BareStressTest(scene, stressCount);
@@ -231,6 +245,8 @@ function init(): void {
   // Dev hooks for testing
   (window as unknown as {
     __sim?: unknown;
+    __scene?: THREE.Scene;
+    __renderer?: THREE.WebGLRenderer;
     __triggerGameOver?: () => void;
     __triggerWin?: () => void;
     __spawnBlueMobs?: (count: number, z: number) => void;
@@ -241,6 +257,8 @@ function init(): void {
     __loadLevel?: (id: number) => void;
     __saveManager?: typeof SaveManager;
   }).__sim = sim;
+  (window as unknown as { __scene?: THREE.Scene }).__scene = scene;
+  (window as unknown as { __renderer?: THREE.WebGLRenderer }).__renderer = renderer;
   (window as unknown as { __sound?: SoundManager }).__sound = sound;
   (window as unknown as { __vfx?: ParticleVFX }).__vfx = vfx;
   (window as unknown as { __screenShake?: ScreenShake }).__screenShake = screenShake;
@@ -276,14 +294,15 @@ function init(): void {
     sim.isGameWon = true;
   };
 
-  (window as unknown as { __spawnBlueMobs?: (count: number, z: number) => void }).__spawnBlueMobs = (
+  (window as unknown as { __spawnBlueMobs?: (count: number, z: number, x?: number) => void }).__spawnBlueMobs = (
     count: number,
-    z: number
+    z: number,
+    x: number = 0
   ) => {
     for (let i = 0; i < count; i++) {
       sim.spawnMob(
-        (Math.random() - 0.5) * 2.0,
-        z + (Math.random() - 0.5) * 1.5,
+        x + (Math.random() - 0.5) * 1.5,
+        z + (Math.random() - 0.5) * 1.0,
         0,
         8,
         0,
