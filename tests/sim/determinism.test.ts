@@ -134,4 +134,22 @@ describe('Determinism & Headless Invariants (M3)', () => {
     const hashFresh = computeSimStateHash(simFresh);
     expect(hashRestarted).toBe(hashFresh);
   });
+
+  it('preserves M6 baseline determinism and RNG sequence for Tier 0 at 600 ticks', () => {
+    const seed = 42;
+    const sim = new Simulation(seed);
+
+    for (let i = 0; i < 600; i++) {
+      sim.step(CONFIG.FIXED_DELTA_TIME);
+    }
+
+    // Blue mobs moving up center line collect Pickup 201 (LV+1 Gem at Z=24)
+    expect(sim.cannon.tier).toBe(1);
+    expect(sim.pool.count).toBe(706);
+    expect(sim.base.hp).toBe(100);
+    expect(sim.rng.getState()).toBe(1813250154912);
+
+    const hash = computeSimStateHash(sim);
+    expect(hash).toBe('6b0c40af');
+  });
 });

@@ -6,8 +6,8 @@ export class CannonSim {
   public x: number = 0;
   public targetX: number = 0;
   public fireTimer: number = 0;
-  public fireInterval: number = 1 / CONFIG.CANNON_FIRE_RATE;
-  public tier: number = 0; // 0 = Standard, 1 = Armored, 2 = Elite Fire
+  public fireInterval: number = CONFIG.CANNON_TIER_CONFIG[0].fireInterval;
+  public tier: number = 0; // 0 = Single Cannon, 1 = Triple Cannon, 2 = Combat Squad
   public justFired: boolean = false;
 
   // Stress testing mode support
@@ -20,6 +20,7 @@ export class CannonSim {
   public upgradeTier(): boolean {
     if (this.tier < 2) {
       this.tier++;
+      this.fireInterval = CONFIG.CANNON_TIER_CONFIG[this.tier].fireInterval;
       return true;
     }
     return false;
@@ -30,6 +31,7 @@ export class CannonSim {
     this.targetX = 0;
     this.fireTimer = 0;
     this.tier = 0;
+    this.fireInterval = CONFIG.CANNON_TIER_CONFIG[0].fireInterval;
     this.justFired = false;
   }
 
@@ -51,10 +53,7 @@ export class CannonSim {
     const lerpFactor = Math.min(1, CONFIG.CANNON_LERP_SPEED * dt);
     this.x += (this.targetX - this.x) * lerpFactor;
 
-    // Determine current tier unit properties
-    const tierHp = this.tier === 2 ? 4 : this.tier === 1 ? 2 : 1;
-    const tierDamage = this.tier === 2 ? 3 : this.tier === 1 ? 2 : 1;
-    const tierWeight = this.tier === 2 ? 4 : this.tier === 1 ? 2 : 1;
+    const cfg = CONFIG.CANNON_TIER_CONFIG[this.tier];
 
     // 2. Firing logic
     if (this.stressTargetCount > 0) {
@@ -77,9 +76,9 @@ export class CannonSim {
             CONFIG.MOB_BASE_SPEED + rng.nextRange(-1, 1),
             0, // team 0 (Blue)
             this.tier,
-            tierHp,
-            tierDamage,
-            tierWeight,
+            cfg.hp,
+            cfg.damage,
+            cfg.weight,
             -1 // lastGateId
           );
         }
@@ -91,21 +90,46 @@ export class CannonSim {
         this.fireTimer -= this.fireInterval;
         this.justFired = true;
 
-        // Small lateral jitter on bullet/mob spawn for organic cluster feel
-        const jitterX = rng.nextRange(-0.15, 0.15);
-        spawnMob(
-          pool,
-          this.x + jitterX,
-          CONFIG.CANNON_MUZZLE_Z,
-          0,
-          CONFIG.MOB_BASE_SPEED,
-          0, // team 0 (Blue)
-          this.tier,
-          tierHp,
-          tierDamage,
-          tierWeight,
-          -1 // lastGateId
-        );
+        if (this.tier === 0) {
+          // Exact M6 baseline draw: single unit with jitter [-0.15, 0.15]
+          const jitterX = rng.nextRange(-0.15, 0.15);
+          spawnMob(
+            pool,
+            this.x + jitterX,
+            CONFIG.CANNON_MUZZLE_Z,
+            0,
+            CONFIG.MOB_BASE_SPEED,
+            0, // team 0 (Blue)
+            0,
+            cfg.hp,
+            cfg.damage,
+            cfg.weight,
+            -1 // lastGateId
+          );
+        } else {
+          // Clustered or squad volleys
+          const count = cfg.offsetsX.length;
+          for (let k = 0; k < count; k++) {
+            const jitterX = rng.nextRange(-0.04, 0.04);
+            const spawnX = Math.max(
+              CONFIG.CANNON_MIN_X,
+              Math.min(CONFIG.CANNON_MAX_X, this.x + cfg.offsetsX[k] + jitterX)
+            );
+            spawnMob(
+              pool,
+              spawnX,
+              CONFIG.CANNON_MUZZLE_Z,
+              0,
+              CONFIG.MOB_BASE_SPEED,
+              0, // team 0 (Blue)
+              this.tier,
+              cfg.hp,
+              cfg.damage,
+              cfg.weight,
+              -1 // lastGateId
+            );
+          }
+        }
       }
     }
   }

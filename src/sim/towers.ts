@@ -1,6 +1,9 @@
 import { CONFIG } from '../config/constants';
 import { MobPool, despawnMob, spawnMob } from './pool';
 import { SeededRNG } from './rng';
+import { CannonSim } from './cannon';
+
+export type TowerRewardType = 'burst_units' | 'multiplier_burst' | 'upgrade';
 
 export interface TowerData {
   readonly id: number;
@@ -8,7 +11,7 @@ export interface TowerData {
   readonly z: number;
   readonly radius: number;
   readonly maxHp: number;
-  readonly rewardType: 'burst_units' | 'multiplier_burst';
+  readonly rewardType: TowerRewardType;
   readonly rewardValue: number;
 }
 
@@ -19,7 +22,7 @@ export class TowerSim {
   public readonly radius: number;
   public readonly maxHp: number;
   public hp: number;
-  public readonly rewardType: 'burst_units' | 'multiplier_burst';
+  public readonly rewardType: TowerRewardType;
   public readonly rewardValue: number;
   public isDestroyed: boolean = false;
 
@@ -45,6 +48,7 @@ export class TowerManager {
   public towers: TowerSim[] = [];
   public justDestroyedTower = false;
   public justDamagedTower = false;
+  public justUpgradedTier = false;
   public lastTowerX = 0;
   public lastTowerZ = 0;
 
@@ -59,29 +63,44 @@ export class TowerManager {
   public reset(): void {
     this.justDestroyedTower = false;
     this.justDamagedTower = false;
+    this.justUpgradedTier = false;
     for (let i = 0; i < this.towers.length; i++) {
       this.towers[i].reset();
     }
   }
 
+  /**
+   * Returns true if all required objectives (excluding optional crates) are destroyed.
+   */
   public isAllTowersDestroyed(): boolean {
     for (let i = 0; i < this.towers.length; i++) {
-      if (!this.towers[i].isDestroyed) {
+      const t = this.towers[i];
+      if (t.rewardType === 'upgrade') continue; // Optional crate
+      if (!t.isDestroyed) {
         return false;
       }
     }
     return true;
   }
 
+  public getRequiredTowersRemaining(): number {
+    return this.towers.filter((t) => !t.isDestroyed && t.rewardType !== 'upgrade').length;
+  }
+
+  public hasRequiredTowers(): boolean {
+    return this.towers.some((t) => t.rewardType !== 'upgrade');
+  }
+
   /**
-   * Resolves blue mob collisions with active towers.
+   * Resolves blue mob collisions with active towers/crates.
    * Decrements tower HP by mob weight, despawns attacking blue mobs,
-   * and triggers reward payouts upon tower destruction.
+   * and triggers reward payouts or tier upgrades upon destruction.
    * Zero heap allocations during frame tick.
    */
-  public update(pool: MobPool, rng: SeededRNG): void {
+  public update(pool: MobPool, rng: SeededRNG, cannon?: CannonSim): void {
     this.justDestroyedTower = false;
     this.justDamagedTower = false;
+    this.justUpgradedTier = false;
     if (this.towers.length === 0 || pool.count === 0) return;
 
     for (let t = 0; t < this.towers.length; t++) {
@@ -97,7 +116,7 @@ export class TowerManager {
       for (let i = pool.count - 1; i >= 0; i--) {
         const slot = pool.activeIndices[i];
 
-        // Only player blue units (team 0) attack guardian towers
+        // Only player blue units (team 0) attack guardian towers & crates
         if (pool.team[slot] !== 0) continue;
 
         // Quick AABB check
@@ -120,7 +139,20 @@ export class TowerManager {
             tower.hp = 0;
             tower.isDestroyed = true;
             this.justDestroyedTower = true;
-            this.grantReward(tower, pool, rng);
+
+            if (tower.rewardType === 'upgrade') {
+              if (cannon) {
+                const upgraded = cannon.upgradeTier();
+                if (upgraded) {
+                  this.justUpgradedTier = true;
+                } else {
+                  // Fallback at max tier (Tier 2): burst of rewardValue units (default 25)
+                  this.grantReward(tower, pool, rng);
+                }
+              }
+            } else {
+              this.grantReward(tower, pool, rng);
+            }
             break; // Tower destroyed; stop checking further mobs for this tower
           }
         }
@@ -129,7 +161,7 @@ export class TowerManager {
   }
 
   private grantReward(tower: TowerSim, pool: MobPool, rng: SeededRNG): void {
-    if (tower.rewardType === 'burst_units') {
+    if (tower.rewardType === 'burst_units' || tower.rewardType === 'upgrade') {
       const burstCount = tower.rewardValue;
       for (let i = 0; i < burstCount; i++) {
         // Radial dispersion burst moving forward

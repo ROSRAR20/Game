@@ -80,6 +80,14 @@ function init(): void {
   const scenario = urlParams.get('scenario');
   const skipMenuParam = urlParams.has('skipMenu') || urlParams.has('bare') || !!scenario || stressCount > 0 || urlParams.has('debug');
   const initialLevelParam = parseInt(urlParams.get('level') || '1', 10);
+  const tierParam = urlParams.get('tier');
+  if (tierParam !== null) {
+    const t = parseInt(tierParam, 10);
+    if (!isNaN(t) && t >= 0 && t <= 2) {
+      sim.cannon.tier = t;
+      sim.cannon.fireInterval = CONFIG.CANNON_TIER_CONFIG[t].fireInterval;
+    }
+  }
 
   // 7. Visual renderers & Juice systems
   const cannonRender = new CannonRender(scene, sim.cannon);
@@ -110,6 +118,7 @@ function init(): void {
   let prevGameOver = false;
   let prevGameWon = false;
   let isInMenu = !skipMenuParam;
+  let lastTowerHitSoundTime = 0;
 
   const applyLevelVisuals = (levelData: LevelData) => {
     gateRender.buildGates(sim.gates.getGates());
@@ -192,6 +201,13 @@ function init(): void {
   if (scenario === 'combat') {
     sim.setCombatStressMode(1000, 1000);
     console.info('[SwarmGate] Combat stress scenario active: 1,000 Blue vs 1,000 Red (2,000 active units)');
+  } else if (scenario === 'tier2_2000') {
+    sim.cannon.tier = 2;
+    sim.cannon.fireInterval = CONFIG.CANNON_TIER_CONFIG[2].fireInterval;
+    sim.setStressMode(2000);
+    const initialLvl = getLevelData(sim.currentLevelId);
+    applyLevelVisuals(initialLvl);
+    console.info('[SwarmGate] Tier 2 stress scenario active: Squad with 2,000 active units');
   } else if (stressCount > 0) {
     if (useBareStress) {
       bareStress = new BareStressTest(scene, stressCount);
@@ -231,6 +247,8 @@ function init(): void {
   // Dev hooks for testing
   (window as unknown as {
     __sim?: unknown;
+    __scene?: THREE.Scene;
+    __renderer?: THREE.WebGLRenderer;
     __triggerGameOver?: () => void;
     __triggerWin?: () => void;
     __spawnBlueMobs?: (count: number, z: number) => void;
@@ -241,6 +259,8 @@ function init(): void {
     __loadLevel?: (id: number) => void;
     __saveManager?: typeof SaveManager;
   }).__sim = sim;
+  (window as unknown as { __scene?: THREE.Scene }).__scene = scene;
+  (window as unknown as { __renderer?: THREE.WebGLRenderer }).__renderer = renderer;
   (window as unknown as { __sound?: SoundManager }).__sound = sound;
   (window as unknown as { __vfx?: ParticleVFX }).__vfx = vfx;
   (window as unknown as { __screenShake?: ScreenShake }).__screenShake = screenShake;
@@ -326,6 +346,9 @@ function init(): void {
       // Sim events -> Juice & Haptics & Audio & VFX
       if (sim.cannon.justFired) {
         vfx.spawnMuzzleFlash(sim.cannon.x, 0.35, 0.5);
+        if (sim.cannon.tier === 2) {
+          vfx.spawnFlameStreaks(sim.cannon.x, CONFIG.CANNON_MUZZLE_Z);
+        }
         sound.playShoot();
         HapticsManager.light();
         sim.cannon.justFired = false;
@@ -337,6 +360,14 @@ function init(): void {
         sound.playLevelUp();
         HapticsManager.medium();
         sim.pickups.justCollectedUpgrade = false;
+      }
+
+      if (sim.towers.justUpgradedTier) {
+        vfx.spawnGateSparkles(sim.cannon.x, 0.6, sim.towers.lastTowerZ, 20, true);
+        screenShake.addTrauma(0.25);
+        sound.playLevelUp();
+        HapticsManager.medium();
+        sim.towers.justUpgradedTier = false;
       }
 
       if (sim.gates.justCrossedGate) {
@@ -360,14 +391,19 @@ function init(): void {
       }
 
       if (sim.towers.justDamagedTower) {
-        vfx.spawnHitSparks(sim.towers.lastTowerX, 1.0, sim.towers.lastTowerZ, 4);
-        sound.playHit();
+        vfx.spawnHitSparks(sim.towers.lastTowerX, 1.0, sim.towers.lastTowerZ, 3);
+        const nowSec = performance.now() * 0.001;
+        if (nowSec - lastTowerHitSoundTime >= 0.075) {
+          sound.playHit();
+          screenShake.addTrauma(0.02);
+          lastTowerHitSoundTime = nowSec;
+        }
         sim.towers.justDamagedTower = false;
       }
 
       if (sim.towers.justDestroyedTower) {
         vfx.spawnExplosion(sim.towers.lastTowerX, 1.2, sim.towers.lastTowerZ, 32);
-        screenShake.addTrauma(0.5);
+        screenShake.addTrauma(0.4);
         sound.playTowerExplosion();
         HapticsManager.heavy();
         sim.towers.justDestroyedTower = false;
@@ -413,7 +449,7 @@ function init(): void {
       vfx.update(dt, camera);
       screenShake.update(dt, camera, camBasePos);
 
-      const towersRemaining = sim.towers.towers.filter((t) => !t.isDestroyed).length;
+      const towersRemaining = sim.towers.getRequiredTowersRemaining();
       const bossesRemaining = sim.bosses.bosses.filter((b) => !b.isDefeated).length;
       hud.update(
         sim.base.hp,

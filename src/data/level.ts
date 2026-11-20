@@ -28,8 +28,8 @@ export const TowerItemSchema = z.object({
   z: z.number().min(10).max(CONFIG.ROAD_LENGTH - 2),
   radius: z.number().positive().max(CONFIG.ROAD_WIDTH / 2),
   maxHp: z.number().int().positive(),
-  rewardType: z.enum(['burst_units', 'multiplier_burst']),
-  rewardValue: z.number().int().positive()
+  rewardType: z.enum(['burst_units', 'multiplier_burst', 'upgrade']),
+  rewardValue: z.number().int().nonnegative()
 });
 
 export const BossItemSchema = z.object({

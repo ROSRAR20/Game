@@ -70,9 +70,9 @@ describe('Cannon Simulation', () => {
     expect(cannon.tier).toBe(2);
     expect(cannon.upgradeTier()).toBe(false); // Max tier capped at 2
 
-    // Fire at tier 2
+    // Fire at tier 2 (cadence 4 volleys/s -> interval 0.25s)
     const prevCount = pool.count;
-    cannon.update(0.2, pool, rng);
+    cannon.update(0.26, pool, rng);
     const slotT2 = pool.activeIndices[prevCount];
     expect(pool.tier[slotT2]).toBe(2);
     expect(pool.hp[slotT2]).toBe(4);

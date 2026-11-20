@@ -207,18 +207,28 @@ export class Simulation {
       this.gates.update(this.pool, dt);
       this.waves.update(dt, this.pool, this.rng);
       this.pickups.update(this.pool, this.cannon);
-      this.towers.update(this.pool, this.rng);
+      this.towers.update(this.pool, this.rng, this.cannon);
       this.bosses.update(dt, this.pool, this.base);
       this.combat.resolveCombat(this.pool);
       this.combat.checkBaseBreaches(this.pool, this.base);
 
       // Check win condition (all towers destroyed, all bosses defeated, all waves cleared)
       if (!this.base.isGameOver) {
+        const hasObjectives =
+          this.towers.hasRequiredTowers() ||
+          this.bosses.bosses.length > 0 ||
+          this.waves.waves.length > 0;
         const allTowersDestroyed = this.towers.isAllTowersDestroyed();
         const allBossesDefeated = this.bosses.isAllBossesDefeated();
         const allWavesSpawned = this.waves.isAllWavesSpawned();
         const teamCounts = this.getTeamCounts();
-        if (allTowersDestroyed && allBossesDefeated && allWavesSpawned && teamCounts.red === 0) {
+        if (
+          hasObjectives &&
+          allTowersDestroyed &&
+          allBossesDefeated &&
+          allWavesSpawned &&
+          teamCounts.red === 0
+        ) {
           this.isGameWon = true;
         }
       }

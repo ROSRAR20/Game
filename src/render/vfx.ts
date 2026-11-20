@@ -131,6 +131,27 @@ export class ParticleVFX {
   }
 
   /**
+   * Spawns fast yellow/gold flame ground streaks when Tier 2 squad fires.
+   */
+  public spawnFlameStreaks(x: number, z: number): void {
+    for (let i = 0; i < 3; i++) {
+      this.emit(
+        x + (Math.random() - 0.5) * 0.8,
+        0.04, // flat along ground
+        z + (Math.random() - 0.5) * 0.3,
+        (Math.random() - 0.5) * 0.5,
+        0.02,
+        8.0 + Math.random() * 4.0, // speed along +Z
+        0.18 + Math.random() * 0.1,
+        0.2 + Math.random() * 0.1,
+        0.98,
+        0.75,
+        0.1 // bright yellow/gold streak
+      );
+    }
+  }
+
+  /**
    * Spawns golden-orange combat hit sparks.
    */
   public spawnHitSparks(x: number, y: number, z: number, count = 3): void {

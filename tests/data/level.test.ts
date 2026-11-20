@@ -8,7 +8,10 @@ describe('Level Data & Zod Validation (M4)', () => {
     expect(level.id).toBe(1);
     expect(level.name).toBe('Desert Outpost');
     expect(level.gates.length).toBe(2);
-    expect(level.towers.length).toBe(1);
+    expect(level.towers.length).toBe(2);
+    const crate = level.towers.find((t) => t.rewardType === 'upgrade');
+    expect(crate).toBeDefined();
+    expect(crate?.maxHp).toBe(5);
     expect(level.bosses.length).toBe(1);
     expect(level.waves.length).toBe(3);
 

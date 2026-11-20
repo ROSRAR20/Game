@@ -15,6 +15,43 @@ export const CONFIG = {
   CANNON_FIRE_RATE: 6, // units per second in normal gameplay
   CANNON_LERP_SPEED: 25, // horizontal smoothing speed
 
+  // Weapon Tiers configuration (Tier 0: Single, Tier 1: Triple, Tier 2: Squad)
+  CANNON_TIER_CONFIG: [
+    {
+      tier: 0,
+      name: 'Single Cannon',
+      volleyCount: 1,
+      fireRate: 6,
+      fireInterval: 1 / 6,
+      offsetsX: [0],
+      hp: 1,
+      damage: 1,
+      weight: 1
+    },
+    {
+      tier: 1,
+      name: 'Triple Cannon',
+      volleyCount: 3,
+      fireRate: 5,
+      fireInterval: 1 / 5,
+      offsetsX: [-0.38, 0, 0.38],
+      hp: 2,
+      damage: 2,
+      weight: 2
+    },
+    {
+      tier: 2,
+      name: 'Combat Squad',
+      volleyCount: 5,
+      fireRate: 4,
+      fireInterval: 1 / 4,
+      offsetsX: [-0.6, -0.3, 0, 0.3, 0.6],
+      hp: 4,
+      damage: 3,
+      weight: 4
+    }
+  ],
+
   // Mob parameters
   MOB_BASE_SPEED: 12, // units/sec along +Z
   MOB_RADIUS: 0.25,
