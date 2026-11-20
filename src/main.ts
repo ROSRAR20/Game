@@ -247,8 +247,6 @@ function init(): void {
   // Dev hooks for testing
   (window as unknown as {
     __sim?: unknown;
-    __scene?: THREE.Scene;
-    __renderer?: THREE.WebGLRenderer;
     __triggerGameOver?: () => void;
     __triggerWin?: () => void;
     __spawnBlueMobs?: (count: number, z: number) => void;
@@ -259,8 +257,6 @@ function init(): void {
     __loadLevel?: (id: number) => void;
     __saveManager?: typeof SaveManager;
   }).__sim = sim;
-  (window as unknown as { __scene?: THREE.Scene }).__scene = scene;
-  (window as unknown as { __renderer?: THREE.WebGLRenderer }).__renderer = renderer;
   (window as unknown as { __sound?: SoundManager }).__sound = sound;
   (window as unknown as { __vfx?: ParticleVFX }).__vfx = vfx;
   (window as unknown as { __screenShake?: ScreenShake }).__screenShake = screenShake;

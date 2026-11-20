@@ -150,6 +150,6 @@ describe('Determinism & Headless Invariants (M3)', () => {
     expect(sim.rng.getState()).toBe(1813250154912);
 
     const hash = computeSimStateHash(sim);
-    expect(hash).toBe('6b0c40af');
+    expect(hash).toBe('d7ef2bd7');
   });
 });

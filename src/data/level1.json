@@ -7,15 +7,6 @@
   ],
   "towers": [
     {
-      "id": 1,
-      "x": 0.0,
-      "z": 30.0,
-      "radius": 1.2,
-      "maxHp": 40,
-      "rewardType": "burst_units",
-      "rewardValue": 30
-    },
-    {
       "id": 11,
       "x": -4.5,
       "z": 12.0,
@@ -23,6 +14,15 @@
       "maxHp": 5,
       "rewardType": "upgrade",
       "rewardValue": 25
+    },
+    {
+      "id": 1,
+      "x": 0.0,
+      "z": 30.0,
+      "radius": 1.2,
+      "maxHp": 40,
+      "rewardType": "burst_units",
+      "rewardValue": 30
     }
   ],
   "bosses": [

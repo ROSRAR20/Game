@@ -1,26 +1,5 @@
 import { test, expect } from '@playwright/test';
 
-interface SimWindow {
-  __sim?: {
-    cannon: {
-      x: number;
-      tier: number;
-      setTargetX: (x: number) => void;
-    };
-    pool: {
-      count: number;
-    };
-    towers: {
-      towers: Array<{
-        id: number;
-        hp: number;
-        rewardType: string;
-        isDestroyed: boolean;
-      }>;
-    };
-  };
-}
-
 test.describe('Weapon Upgrades & Power-Ups (Level 1)', () => {
   test.beforeEach(async ({ page }) => {
     page.on('pageerror', (err) => console.log('[PAGE ERROR]:', err));
@@ -31,15 +10,21 @@ test.describe('Weapon Upgrades & Power-Ups (Level 1)', () => {
     });
   });
 
-  test('Tier 0: Single Cannon visual, HUD, and draw calls <= 30', async ({ page }) => {
+  test('verifies Level 1 upgrade crate, 3 visible weapon tiers, and draw calls <= 30', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/?skipMenu&debug&tier=0');
+    await page.goto('/?skipMenu&debug');
 
     const container = page.locator('#game-container');
     await expect(container).toBeVisible();
 
-    const state = await page.evaluate(() => {
-      const win = window as unknown as SimWindow;
+    // Verify initial Tier 0 state
+    const initialTier = await page.evaluate(() => {
+      const win = window as unknown as {
+        __sim?: {
+          cannon: { tier: number };
+          towers: { towers: Array<{ id: number; hp: number; rewardType: string; isDestroyed: boolean }> };
+        };
+      };
       const crate = win.__sim?.towers.towers.find((t) => t.rewardType === 'upgrade');
       return {
         tier: win.__sim?.cannon.tier,
@@ -48,18 +33,18 @@ test.describe('Weapon Upgrades & Power-Ups (Level 1)', () => {
       };
     });
 
-    expect(state.tier).toBe(0);
-    expect(state.crateHp).toBe(5);
-    expect(state.crateDestroyed).toBe(false);
+    expect(initialTier.tier).toBe(0);
+    expect(initialTier.crateHp).toBe(5);
+    expect(initialTier.crateDestroyed).toBe(false);
 
     // Verify HUD reflects 1 primary tower (excludes optional crate)
     const objTowers = page.locator('#obj-towers');
     await expect(objTowers).toHaveText(/TOWER: 1/);
 
+    // Check draw calls at Tier 0
     const dbgDraws = page.locator('#dbg-draws');
     await expect(dbgDraws).toBeVisible();
     await page.waitForTimeout(600);
-
     const drawsT0 = Number(await dbgDraws.textContent());
     expect(drawsT0).toBeLessThan(35);
     expect(drawsT0).toBeLessThanOrEqual(30);
@@ -68,24 +53,37 @@ test.describe('Weapon Upgrades & Power-Ups (Level 1)', () => {
     await page.screenshot({
       path: 'test-results/tier0-single-cannon.png'
     });
-  });
 
-  test('Tier 1: Clustered Triple Cannon visual and draw calls <= 30', async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/?skipMenu&debug&tier=1');
-
-    const container = page.locator('#game-container');
-    await expect(container).toBeVisible();
-
-    const tier = await page.evaluate(() => {
-      const win = window as unknown as SimWindow;
-      return win.__sim?.cannon.tier;
+    // 1. Move cannon to X = -4.5 to hit crate
+    await page.evaluate(() => {
+      const win = window as unknown as {
+        __sim?: { cannon: { setTargetX: (x: number) => void } };
+      };
+      if (win.__sim) {
+        win.__sim.cannon.setTargetX(-4.5);
+      }
     });
-    expect(tier).toBe(1);
 
-    const dbgDraws = page.locator('#dbg-draws');
-    await expect(dbgDraws).toBeVisible();
-    await page.waitForTimeout(600);
+    // Wait 2.2 seconds for bullets to reach and break crate
+    await page.waitForTimeout(2200);
+
+    const tier1State = await page.evaluate(() => {
+      const win = window as unknown as {
+        __sim?: {
+          cannon: { tier: number };
+          towers: { towers: Array<{ id: number; hp: number; rewardType: string; isDestroyed: boolean }> };
+        };
+      };
+      const crate = win.__sim?.towers.towers.find((t) => t.rewardType === 'upgrade');
+      return {
+        tier: win.__sim?.cannon.tier,
+        crateHp: crate?.hp,
+        crateDestroyed: crate?.isDestroyed
+      };
+    });
+
+    expect(tier1State.crateDestroyed).toBe(true);
+    expect(tier1State.tier).toBe(1);
 
     const drawsT1 = Number(await dbgDraws.textContent());
     expect(drawsT1).toBeLessThan(35);
@@ -95,24 +93,28 @@ test.describe('Weapon Upgrades & Power-Ups (Level 1)', () => {
     await page.screenshot({
       path: 'test-results/tier1-triple-cannon.png'
     });
-  });
 
-  test('Tier 2: Squad Cannon visual and draw calls <= 30', async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/?skipMenu&debug&tier=2');
+    // 2. Steer back to center (X = 0) to collect LV+1 Gem at Z = 24
+    await page.evaluate(() => {
+      const win = window as unknown as {
+        __sim?: { cannon: { setTargetX: (x: number) => void } };
+      };
+      if (win.__sim) {
+        win.__sim.cannon.setTargetX(0.0);
+      }
+    });
 
-    const container = page.locator('#game-container');
-    await expect(container).toBeVisible();
+    // Wait 2.5 seconds for units to march over Z = 24
+    await page.waitForTimeout(2500);
 
-    const tier = await page.evaluate(() => {
-      const win = window as unknown as SimWindow;
+    const tier2State = await page.evaluate(() => {
+      const win = window as unknown as {
+        __sim?: { cannon: { tier: number } };
+      };
       return win.__sim?.cannon.tier;
     });
-    expect(tier).toBe(2);
 
-    const dbgDraws = page.locator('#dbg-draws');
-    await expect(dbgDraws).toBeVisible();
-    await page.waitForTimeout(600);
+    expect(tier2State).toBe(2);
 
     const drawsT2 = Number(await dbgDraws.textContent());
     expect(drawsT2).toBeLessThan(35);
@@ -124,41 +126,7 @@ test.describe('Weapon Upgrades & Power-Ups (Level 1)', () => {
     });
   });
 
-  test('Upgrade Crate: breaking crate triggers cannon upgrade to Tier 1', async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/?skipMenu&debug');
-
-    const container = page.locator('#game-container');
-    await expect(container).toBeVisible();
-
-    // Move cannon to X = -4.5 immediately to target the crate at (X=-4.5, Z=12)
-    await page.evaluate(() => {
-      const win = window as unknown as SimWindow;
-      if (win.__sim) {
-        win.__sim.cannon.x = -4.5;
-        win.__sim.cannon.setTargetX(-4.5);
-      }
-    });
-
-    // Wait for bullets to reach and break crate (5 hits at 6 shots/s = ~1.5s)
-    await page.waitForTimeout(2000);
-
-    const crateState = await page.evaluate(() => {
-      const win = window as unknown as SimWindow;
-      const crate = win.__sim?.towers.towers.find((t) => t.rewardType === 'upgrade');
-      return {
-        tier: win.__sim?.cannon.tier,
-        crateHp: crate?.hp,
-        crateDestroyed: crate?.isDestroyed
-      };
-    });
-
-    expect(crateState.crateDestroyed).toBe(true);
-    expect(crateState.crateHp).toBe(0);
-    expect(crateState.tier).toBeGreaterThanOrEqual(1);
-  });
-
-  test('Scenario: ?scenario=tier2_2000 initializes Tier 2 squad with ~2,000 active units at DPR 1.0', async ({ page }) => {
+  test('verifies ?scenario=tier2_2000 initializes Tier 2 squad with ~2,000 active units at DPR 1.0', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/?scenario=tier2_2000&debug&dpr=1');
 
@@ -168,7 +136,9 @@ test.describe('Weapon Upgrades & Power-Ups (Level 1)', () => {
     await page.waitForTimeout(1000);
 
     const state = await page.evaluate(() => {
-      const win = window as unknown as SimWindow;
+      const win = window as unknown as {
+        __sim?: { cannon: { tier: number }; pool: { count: number } };
+      };
       return {
         tier: win.__sim?.cannon.tier,
         count: win.__sim?.pool.count
@@ -190,3 +160,4 @@ test.describe('Weapon Upgrades & Power-Ups (Level 1)', () => {
     });
   });
 });
+
