@@ -71,6 +71,35 @@ export function createScene(): GameScene {
   const startLine = new THREE.Mesh(startLineGeo, startLineMat);
   scene.add(startLine);
 
+  // Dev-only ?debugLanes overlay: draws lane boundaries (X = -2, X = +2) and mid-line (Z = 22)
+  const isDebugLanes =
+    typeof window !== 'undefined' &&
+    window.location &&
+    new URLSearchParams(window.location.search).has('debugLanes');
+
+  if (isDebugLanes) {
+    // Lane boundary X = -2 (Left/Centre divider, Z = 0..22)
+    const div1Geo = new THREE.PlaneGeometry(0.12, 22);
+    div1Geo.rotateX(-Math.PI / 2);
+    div1Geo.translate(-2.0, 0.02, 11);
+    const div1Mat = new THREE.MeshBasicMaterial({ color: 0xfacc15 }); // bright yellow
+    scene.add(new THREE.Mesh(div1Geo, div1Mat));
+
+    // Lane boundary X = +2 (Centre/Right divider, Z = 0..22)
+    const div2Geo = new THREE.PlaneGeometry(0.12, 22);
+    div2Geo.rotateX(-Math.PI / 2);
+    div2Geo.translate(2.0, 0.02, 11);
+    const div2Mat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+    scene.add(new THREE.Mesh(div2Geo, div2Mat));
+
+    // Mid-line transverse divider at Z = 22 across full road width
+    const midGeo = new THREE.PlaneGeometry(CONFIG.ROAD_WIDTH, 0.25);
+    midGeo.rotateX(-Math.PI / 2);
+    midGeo.translate(0, 0.025, 22.0);
+    const midMat = new THREE.MeshBasicMaterial({ color: 0xec4899 }); // neon pink / magenta
+    scene.add(new THREE.Mesh(midGeo, midMat));
+  }
+
   const dispose = () => {
     roadGeometry.dispose();
     roadMaterial.dispose();
