@@ -1,17 +1,32 @@
 import { Preferences } from '@capacitor/preferences';
 
 export interface SaveData {
+  // Endless Run V2 schema
+  bestScore: number;
+  bestTimeSec: number;
+  totalKills: number;
+  soundEnabled: boolean;
+  version: 2;
+
+  // Legacy M6 fields preserved for backward-compatibility
   highestUnlockedLevel: number; // 1 to 5
   currentLevel: number;
-  levelStars: Record<number, number>; // levelId -> stars (1-3)
+  levelScores: Record<string | number, number>;
+  levelStars: Record<string | number, number>; // levelId -> stars (1-3)
   soundMuted: boolean;
 }
 
 const STORAGE_KEY = 'swarm_gate_save_v1';
 
 export const DEFAULT_SAVE_DATA: SaveData = {
+  bestScore: 0,
+  bestTimeSec: 0,
+  totalKills: 0,
+  soundEnabled: true,
+  version: 2,
   highestUnlockedLevel: 1,
   currentLevel: 1,
+  levelScores: {},
   levelStars: {},
   soundMuted: false
 };
@@ -60,15 +75,66 @@ export class SaveManager {
     return { ...this.cachedData };
   }
 
-  private static sanitize(parsed: Record<string, unknown>): SaveData {
+  public static sanitize(parsed: Record<string, unknown>): SaveData {
+    // Migration: support both real M6 format and new Endless V2 schema
+    let bestScore = Math.max(0, Number(parsed.bestScore) || 0);
+    const bestTimeSec = Math.max(0, Number(parsed.bestTimeSec) || 0);
+    const totalKills = Math.max(0, Number(parsed.totalKills) || 0);
+
+    // If migrating from M6 save that had levelScores, convert total into initial score
+    if (!parsed.version && parsed.levelScores && typeof parsed.levelScores === 'object') {
+      let sumScores = 0;
+      for (const val of Object.values(parsed.levelScores as Record<string, unknown>)) {
+        sumScores += Number(val) || 0;
+      }
+      bestScore = Math.max(bestScore, sumScores);
+    }
+
+    const soundEnabled =
+      parsed.soundEnabled !== undefined
+        ? Boolean(parsed.soundEnabled)
+        : parsed.soundMuted !== undefined
+        ? !Boolean(parsed.soundMuted)
+        : true;
+
     return {
+      bestScore,
+      bestTimeSec,
+      totalKills,
+      soundEnabled,
+      version: 2,
       highestUnlockedLevel: Math.max(1, Math.min(5, Number(parsed.highestUnlockedLevel) || 1)),
       currentLevel: Math.max(1, Math.min(5, Number(parsed.currentLevel) || 1)),
-      levelStars: typeof parsed.levelStars === 'object' && parsed.levelStars !== null
-        ? (parsed.levelStars as Record<number, number>)
-        : {},
-      soundMuted: Boolean(parsed.soundMuted)
+      levelScores:
+        typeof parsed.levelScores === 'object' && parsed.levelScores !== null
+          ? (parsed.levelScores as Record<string | number, number>)
+          : {},
+      levelStars:
+        typeof parsed.levelStars === 'object' && parsed.levelStars !== null
+          ? (parsed.levelStars as Record<string | number, number>)
+          : {},
+      soundMuted: !soundEnabled
     };
+  }
+
+  /**
+   * Records completed endless run, updating best score, best survival time, and kill tally.
+   */
+  public static async recordRun(
+    score: number,
+    survivalSeconds: number,
+    kills: number
+  ): Promise<{ isNewBestScore: boolean; isNewBestTime: boolean; data: SaveData }> {
+    const isNewBestScore = score > this.cachedData.bestScore;
+    const isNewBestTime = survivalSeconds > this.cachedData.bestTimeSec;
+
+    const updated = await this.save({
+      bestScore: Math.max(this.cachedData.bestScore, score),
+      bestTimeSec: Math.max(this.cachedData.bestTimeSec, survivalSeconds),
+      totalKills: this.cachedData.totalKills + kills
+    });
+
+    return { isNewBestScore, isNewBestTime, data: updated };
   }
 
   /**
@@ -82,9 +148,16 @@ export class SaveManager {
    * Persists save data updates into durable preferences storage.
    */
   public static async save(updates: Partial<SaveData>): Promise<SaveData> {
+    const mergedUpdates = { ...updates };
+    if (mergedUpdates.soundMuted !== undefined && mergedUpdates.soundEnabled === undefined) {
+      mergedUpdates.soundEnabled = !mergedUpdates.soundMuted;
+    } else if (mergedUpdates.soundEnabled !== undefined && mergedUpdates.soundMuted === undefined) {
+      mergedUpdates.soundMuted = !mergedUpdates.soundEnabled;
+    }
+
     this.cachedData = {
       ...this.cachedData,
-      ...updates
+      ...mergedUpdates
     };
 
     const serialized = JSON.stringify(this.cachedData);

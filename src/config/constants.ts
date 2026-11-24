@@ -103,6 +103,39 @@ export const CONFIG = {
     }
   },
 
+  // Endless Run & Difficulty Configuration (Stage 2/3 retuned)
+  ENDLESS: {
+    BASE_SPAWN_RATE: 3.2, // units/s at t=0
+    SPAWN_RATE_RAMP_PER_MIN: 3.0, // +units/s per minute
+    MAX_SPAWN_RATE: 22.0, // hard cap
+    BASE_SPEED: 2.7, // m/s
+    SPEED_RAMP_PER_MIN: 0.10, // +m/s per minute
+    MAX_SPEED: 3.6, // m/s
+    MAX_RED_UNITS: 900 // active red units cap
+  },
+
+  // Left-Lane Moving +1 Panels (Stage 3)
+  PANELS: {
+    SPEED: 2.0, // 2.0 m/s moving toward cannon line
+    DESPAWN_Z: 5.0, // cannon line
+    SPAWN_X: 4.0, // left tunnel mouth (world X in [2, 6])
+    SPAWN_Z: 22.0,
+    WIDTH: 1.4,
+    HEIGHT: 1.0,
+    DEPTH: 0.4,
+    BASE_INTERVAL: 12.0, // seconds
+    MIN_INTERVAL: 6.0,
+    MAX_CANNON_COUNT: 6,
+    SCORE_AT_MAX: 250 // score granted when collected at max shooters
+  },
+
+  // Cap Behaviour Option 1: Weight Merging
+  CAP_MERGE: {
+    POOL_THRESHOLD: 3000,
+    MAX_UNIT_WEIGHT: 10,
+    MAX_VISUAL_SCALE: 1.8
+  },
+
   // Visual colors (bright high-contrast arcade palette)
   COLORS: {
     BACKGROUND: 0x0f172a,
@@ -147,7 +180,7 @@ export interface CameraPresetConfig {
   posZ: number;
 }
 
-export const CAMERA_PRESETS: Record<'a' | 'b' | 'c', CameraPresetConfig> = {
+export const CAMERA_PRESETS: Record<'a' | 'b' | 'c' | 'middle', CameraPresetConfig> = {
   a: {
     name: 'Preset A (Approved Tuned: pitch 40, yaw 25.5, fov 56, height 20, posX -8.8, posZ -9)',
     fov: 56,
@@ -177,20 +210,30 @@ export const CAMERA_PRESETS: Record<'a' | 'b' | 'c', CameraPresetConfig> = {
     lookAtDistance: 40,
     posX: -11.0,
     posZ: -3.0
+  },
+  middle: {
+    name: 'Middle Option (yaw 16.0, posX -5.2, posZ -11.5, height 24.5, pitch 44, fov 60)',
+    fov: 60,
+    pitch: 44,
+    yaw: 16.0,
+    height: 24.5,
+    lookAtDistance: 20,
+    posX: -5.2,
+    posZ: -11.5
   }
 };
 
 /**
- * Returns effective camera configuration, parsing URL query parameters for presets (?camPreset=a|b|c)
+ * Returns effective camera configuration, parsing URL query parameters for presets (?camPreset=a|b|c|middle)
  * and individual tuning overrides (?camPitch=, ?camYaw=, ?camFov=, ?camHeight=, ?camLookAtDistance=, ?camX=, ?camZ=).
  */
-export function getEffectiveCameraConfig(): CameraConfig & { preset: 'a' | 'b' | 'c' } {
-  let presetKey: 'a' | 'b' | 'c' = 'a';
+export function getEffectiveCameraConfig(): CameraConfig & { preset: 'a' | 'b' | 'c' | 'middle' } {
+  let presetKey: 'a' | 'b' | 'c' | 'middle' = 'a';
 
   if (typeof window !== 'undefined' && window.location) {
     const params = new URLSearchParams(window.location.search);
     const p = params.get('camPreset')?.toLowerCase();
-    if (p === 'b' || p === 'c') {
+    if (p === 'b' || p === 'c' || p === 'middle') {
       presetKey = p;
     }
   }

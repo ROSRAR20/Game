@@ -9,6 +9,8 @@ import { WaveManager } from './waves';
 import { TowerManager } from './towers';
 import { BossManager } from './boss';
 import { PickupManager } from './pickups';
+import { EndlessManager } from './endless';
+import { PanelManager } from './panels';
 import { getLevelGates, getLevelData, LevelData } from '../data/level';
 
 export class Simulation {
@@ -22,6 +24,10 @@ export class Simulation {
   public towers: TowerManager;
   public bosses: BossManager;
   public pickups: PickupManager;
+  public endless: EndlessManager;
+  public panels: PanelManager;
+  public isEndless: boolean = false;
+  public ticks: number = 0;
   public isGameWon: boolean = false;
   public currentLevelId: number = 1;
 
@@ -38,6 +44,8 @@ export class Simulation {
     this.pool = createMobPool(capacity);
     this.cannon = new CannonSim();
     this.rng = new SeededRNG(seed);
+    this.endless = new EndlessManager(seed);
+    this.panels = new PanelManager(seed);
 
     const levelData = getLevelData(this.currentLevelId);
     this.gates = new GateManager(this.rng);
@@ -48,6 +56,18 @@ export class Simulation {
     this.towers = new TowerManager(levelData.towers);
     this.bosses = new BossManager(levelData.bosses);
     this.pickups = new PickupManager(levelData.pickups);
+    this.isGameWon = false;
+  }
+
+  public startEndless(startAtSeconds: number = 0): void {
+    this.isEndless = true;
+    this.ticks = Math.floor(startAtSeconds * 60);
+    this.endless.reset(startAtSeconds);
+    this.panels.reset();
+    // In endless mode, only the 2 centre gates (Gate 1 and Gate 2) are active
+    const levelGates = getLevelGates(1).filter((g) => g.id === 1 || g.id === 2);
+    this.gates.setGates(levelGates);
+    this.base.reset();
     this.isGameWon = false;
   }
 
@@ -203,11 +223,25 @@ export class Simulation {
     // 3. Process gate crossings, wave spawns, towers, bosses, and combat collisions
     if (this.isCombatStressMode) {
       this.combat.resolveCombat(this.pool);
-    } else if (!this.isStressMode) {
+    } else if (this.isStressMode) {
+      // Stress mode active
+    } else if (this.isEndless) {
+      this.ticks++;
+      const teamCounts = this.getTeamCounts();
+      this.endless.update(dt, this.pool, teamCounts.red);
+      const panelCollision = this.panels.update(dt, this.endless.difficultyTime, this.cannon);
+      if (panelCollision.bonusScoreAwarded > 0) {
+        this.endless.addScore(panelCollision.bonusScoreAwarded);
+      }
+      this.gates.update(this.pool, dt);
+      const combatStats = this.combat.resolveCombat(this.pool);
+      this.endless.kills += combatStats.redKilled;
+      this.combat.checkBaseBreaches(this.pool, this.base);
+    } else {
       this.gates.update(this.pool, dt);
       this.waves.update(dt, this.pool, this.rng);
       this.pickups.update(this.pool, this.cannon);
-      this.towers.update(this.pool, this.rng);
+      this.towers.update(this.pool, this.rng, this.cannon);
       this.bosses.update(dt, this.pool, this.base);
       this.combat.resolveCombat(this.pool);
       this.combat.checkBaseBreaches(this.pool, this.base);
@@ -281,5 +315,13 @@ export class Simulation {
 
     // 6. Reset timestep accumulator
     this.accumulator = 0;
+
+    if (this.isEndless) {
+      this.ticks = 0;
+      this.endless.reset();
+      this.panels.reset();
+      const levelGates = getLevelGates(1).filter((g) => g.id === 1 || g.id === 2);
+      this.gates.setGates(levelGates);
+    }
   }
 }

@@ -2,8 +2,11 @@
   "id": 1,
   "name": "Desert Outpost",
   "gates": [
-    { "id": 1, "kind": "add", "value": 5, "x": -3.0, "width": 6.0, "z": 18.0 },
-    { "id": 2, "kind": "mul", "value": 2, "x": 3.0, "width": 6.0, "z": 18.0 }
+    { "id": 1, "kind": "add", "value": 5, "x": -1.0, "width": 2.0, "z": 18.0 },
+    { "id": 2, "kind": "mul", "value": 2, "x": 1.0, "width": 2.0, "z": 18.0 },
+    { "id": 3, "kind": "add", "value": 1, "x": 4.0, "width": 3.6, "z": 11.0 },
+    { "id": 4, "kind": "add", "value": 1, "x": 4.0, "width": 3.6, "z": 14.0 },
+    { "id": 5, "kind": "add", "value": 1, "x": 4.0, "width": 3.6, "z": 17.0 }
   ],
   "towers": [
     {
@@ -14,6 +17,24 @@
       "maxHp": 40,
       "rewardType": "burst_units",
       "rewardValue": 30
+    },
+    {
+      "id": 2,
+      "x": 4.0,
+      "z": 8.0,
+      "radius": 0.8,
+      "maxHp": 5,
+      "rewardType": "upgrade",
+      "rewardValue": 1
+    },
+    {
+      "id": 3,
+      "x": -4.0,
+      "z": 14.0,
+      "radius": 1.0,
+      "maxHp": 54,
+      "rewardType": "upgrade",
+      "rewardValue": 2
     }
   ],
   "bosses": [
@@ -27,18 +48,10 @@
       "speed": 1.0
     }
   ],
-  "pickups": [
-    {
-      "id": 201,
-      "kind": "upgrade",
-      "x": 0.0,
-      "z": 24.0,
-      "radius": 1.5
-    }
-  ],
+  "pickups": [],
   "waves": [
-    { "id": 1, "triggerTimeSec": 2.0, "count": 8, "minX": -3.5, "maxX": 3.5, "spawnZ": 34.0, "speed": 2.5, "weight": 1, "tier": 0 },
-    { "id": 2, "triggerTimeSec": 6.0, "count": 14, "minX": -4.0, "maxX": 4.0, "spawnZ": 38.0, "speed": 2.5, "weight": 1, "tier": 0 },
-    { "id": 3, "triggerTimeSec": 12.0, "count": 20, "minX": -4.5, "maxX": 4.5, "spawnZ": 44.0, "speed": 2.5, "weight": 1, "tier": 0 }
+    { "id": 1, "triggerTimeSec": 2.0, "count": 8, "minX": -1.75, "maxX": 1.75, "spawnZ": 34.0, "speed": 2.5, "weight": 1, "tier": 0 },
+    { "id": 2, "triggerTimeSec": 6.0, "count": 14, "minX": -1.75, "maxX": 1.75, "spawnZ": 38.0, "speed": 2.5, "weight": 1, "tier": 0 },
+    { "id": 3, "triggerTimeSec": 12.0, "count": 20, "minX": -1.75, "maxX": 1.75, "spawnZ": 44.0, "speed": 2.5, "weight": 1, "tier": 0 }
   ]
 }

@@ -25,10 +25,10 @@ export const GateItemSchema = z.object({
 export const TowerItemSchema = z.object({
   id: z.number().int().positive(),
   x: z.number().min(minRoadX).max(maxRoadX),
-  z: z.number().min(10).max(CONFIG.ROAD_LENGTH - 2),
+  z: z.number().min(5).max(CONFIG.ROAD_LENGTH - 2),
   radius: z.number().positive().max(CONFIG.ROAD_WIDTH / 2),
   maxHp: z.number().int().positive(),
-  rewardType: z.enum(['burst_units', 'multiplier_burst']),
+  rewardType: z.enum(['burst_units', 'multiplier_burst', 'upgrade']),
   rewardValue: z.number().int().positive()
 });
 

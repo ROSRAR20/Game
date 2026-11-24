@@ -71,11 +71,24 @@ export class MenuController {
     }
 
     if (this.menuSelectedLevelEl) {
-      const level = getLevelData(this.currentSelectedLevel);
-      this.menuSelectedLevelEl.textContent = `MISSION ${level.id} — ${level.name.toUpperCase()}`;
+      const formatTime = (totalSec: number) => {
+        const m = Math.floor(totalSec / 60);
+        const s = totalSec % 60;
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+      };
+      this.menuSelectedLevelEl.textContent = `BEST: ${saveData.bestScore.toLocaleString()} PTS (${formatTime(saveData.bestTimeSec)})`;
     }
 
-    this.updateSoundButton(saveData.soundMuted);
+    if (this.btnPlay) {
+      this.btnPlay.textContent = 'PLAY';
+    }
+
+    // Level select is hidden in Endless Run mode
+    if (this.btnLevelSelect) {
+      this.btnLevelSelect.style.display = 'none';
+    }
+
+    this.updateSoundButton(!saveData.soundEnabled);
     this.renderLevelGrid(saveData);
 
     if (this.mainMenuEl) {

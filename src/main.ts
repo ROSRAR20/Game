@@ -9,6 +9,7 @@ import { GateRenderer } from './render/gates';
 import { TowerRenderer } from './render/towers';
 import { BossRenderer } from './render/boss';
 import { PickupRenderer } from './render/pickups';
+import { PanelRenderer } from './render/panels';
 import { ParticleVFX, ScreenShake } from './render/vfx';
 import { SoundManager } from './audio/sound';
 import { HapticsManager, SaveManager, PlatformLifecycle, configureDisplay } from './platform';
@@ -78,8 +79,19 @@ function init(): void {
   const urlParams = new URLSearchParams(window.location.search);
   const useBareStress = urlParams.has('bare');
   const scenario = urlParams.get('scenario');
-  const skipMenuParam = urlParams.has('skipMenu') || urlParams.has('bare') || !!scenario || stressCount > 0 || urlParams.has('debug');
   const initialLevelParam = parseInt(urlParams.get('level') || '1', 10);
+  const startAtParam = parseFloat(urlParams.get('startAt') || '0');
+  const countParam = parseInt(urlParams.get('count') || '1', 10);
+  const tierParam = parseInt(urlParams.get('tier') || '0', 10);
+  const isCampaignParam = urlParams.has('campaign');
+  const loadParam = parseInt(urlParams.get('load') || '0', 10);
+  const skipMenuParam =
+    urlParams.has('skipMenu') ||
+    urlParams.has('bare') ||
+    !!scenario ||
+    stressCount > 0 ||
+    urlParams.has('debug') ||
+    loadParam > 0;
 
   // 7. Visual renderers & Juice systems
   const cannonRender = new CannonRender(scene, sim.cannon);
@@ -88,6 +100,7 @@ function init(): void {
   const towerRender = new TowerRenderer(scene);
   const bossRender = new BossRenderer(scene);
   const pickupRender = new PickupRenderer(scene);
+  const panelRender = new PanelRenderer(scene);
   const vfx = new ParticleVFX(scene);
   const screenShake = new ScreenShake();
   const sound = new SoundManager();
@@ -117,6 +130,19 @@ function init(): void {
     bossRender.buildBosses(sim.bosses.bosses);
     pickupRender.update(0, sim.pickups.pickups, camera);
     hud.setLevel(levelData);
+    hud.setEndlessMode(false);
+    hud.reset(sim.base.maxHp);
+  };
+
+  const startEndlessRun = () => {
+    sim.startEndless(startAtParam);
+    if (countParam > 1) sim.cannon.setCannonCount(countParam);
+    if (tierParam > 0) sim.cannon.setTier(tierParam);
+    gateRender.buildGates(sim.gates.getGates());
+    towerRender.buildTowers([]);
+    bossRender.buildBosses([]);
+    pickupRender.update(0, [], camera);
+    hud.setEndlessMode(true);
     hud.reset(sim.base.maxHp);
   };
 
@@ -124,8 +150,12 @@ function init(): void {
   const hud = new HudController({
     onRestart: () => {
       sim.restart();
-      const lvl = getLevelData(sim.currentLevelId);
-      applyLevelVisuals(lvl);
+      if (sim.isEndless) {
+        startEndlessRun();
+      } else {
+        const lvl = getLevelData(sim.currentLevelId);
+        applyLevelVisuals(lvl);
+      }
       vfx.clear();
       screenShake.reset();
       prevGameOver = false;
@@ -153,13 +183,17 @@ function init(): void {
   const menu = new MenuController({
     onStartLevel: (levelId: number) => {
       isInMenu = false;
-      const lvl = sim.loadLevel(levelId);
-      applyLevelVisuals(lvl);
+      if (isCampaignParam) {
+        const lvl = sim.loadLevel(levelId);
+        applyLevelVisuals(lvl);
+        SaveManager.save({ currentLevel: levelId });
+      } else {
+        startEndlessRun();
+      }
       vfx.clear();
       screenShake.reset();
       prevGameOver = false;
       prevGameWon = false;
-      SaveManager.save({ currentLevel: levelId });
     },
     onToggleSound: () => {
       const isMuted = !SaveManager.get().soundMuted;
@@ -175,12 +209,17 @@ function init(): void {
     menu.updateSoundButton(saveData.soundMuted);
 
     if (!skipMenuParam) {
-      const targetLvl = initialLevelParam || saveData.currentLevel || 1;
-      if (targetLvl !== sim.currentLevelId) {
-        const lvl = sim.loadLevel(targetLvl);
-        applyLevelVisuals(lvl);
+      if (isCampaignParam) {
+        const targetLvl = initialLevelParam || saveData.currentLevel || 1;
+        if (targetLvl !== sim.currentLevelId) {
+          const lvl = sim.loadLevel(targetLvl);
+          applyLevelVisuals(lvl);
+        }
+        menu.showMainMenu(saveData, targetLvl);
+      } else {
+        startEndlessRun();
+        menu.showMainMenu(saveData);
       }
-      menu.showMainMenu(saveData, targetLvl);
     } else {
       menu.hideMainMenu();
       isInMenu = false;
@@ -189,7 +228,13 @@ function init(): void {
 
   let bareStress: BareStressTest | null = null;
 
-  if (scenario === 'combat') {
+  if (loadParam > 0) {
+    const halfBlue = Math.floor(loadParam / 2);
+    const halfRed = Math.ceil(loadParam / 2);
+    startEndlessRun();
+    sim.setCombatStressMode(halfBlue, halfRed);
+    console.info(`[SwarmGate] Real seeded load test active (?load=${loadParam}): ${halfBlue} Blue vs ${halfRed} Red`);
+  } else if (scenario === 'combat') {
     sim.setCombatStressMode(1000, 1000);
     console.info('[SwarmGate] Combat stress scenario active: 1,000 Blue vs 1,000 Red (2,000 active units)');
   } else if (stressCount > 0) {
@@ -200,9 +245,12 @@ function init(): void {
       sim.setStressMode(stressCount);
       console.info(`[SwarmGate] Gameplay mob stress mode active: ${stressCount} mobs`);
     }
-  } else {
-    const initialLvl = getLevelData(sim.currentLevelId);
+  } else if (isCampaignParam) {
+    const targetLvl = initialLevelParam || 1;
+    const initialLvl = sim.loadLevel(targetLvl);
     applyLevelVisuals(initialLvl);
+  } else {
+    startEndlessRun();
   }
 
   // 8. Platform initialization & lifecycle listeners
@@ -246,6 +294,10 @@ function init(): void {
   (window as unknown as { __screenShake?: ScreenShake }).__screenShake = screenShake;
   (window as unknown as { __menu?: MenuController }).__menu = menu;
   (window as unknown as { __saveManager?: typeof SaveManager }).__saveManager = SaveManager;
+  (window as unknown as { __scene?: THREE.Scene }).__scene = scene;
+  (window as unknown as { __renderer?: THREE.WebGLRenderer }).__renderer = renderer;
+  (window as unknown as { __camera?: THREE.PerspectiveCamera }).__camera = camera;
+  (window as unknown as { THREE?: typeof THREE }).THREE = THREE;
   (window as unknown as { __loadLevel?: (id: number) => void }).__loadLevel = (id: number) => {
     const lvl = sim.loadLevel(id);
     applyLevelVisuals(lvl);
@@ -402,18 +454,36 @@ function init(): void {
         sound.playGameOver();
         HapticsManager.heavy();
         prevGameOver = true;
+
+        if (sim.isEndless) {
+          const survivalSec = Math.floor(sim.ticks / 60);
+          const score = sim.endless.getScore(sim.ticks);
+          SaveManager.recordRun(score, survivalSec, sim.endless.kills).then((res) => {
+            hud.showEndlessGameOver(score, survivalSec, res.data.bestScore, res.isNewBestScore);
+          });
+        }
       }
 
       // Synchronize visual state from sim state
       cannonRender.update();
       mobRender.update(sim.pool);
+      panelRender.update(sim.panels.panels);
       towerRender.update(sim.towers.towers);
       bossRender.update(sim.bosses.bosses);
       pickupRender.update(dt, sim.pickups.pickups, camera);
       vfx.update(dt, camera);
       screenShake.update(dt, camera, camBasePos);
 
-      const towersRemaining = sim.towers.towers.filter((t) => !t.isDestroyed).length;
+      if (sim.isEndless) {
+        hud.updateEndless(
+          sim.ticks / 60,
+          sim.endless.getScore(sim.ticks),
+          SaveManager.get().bestScore,
+          sim.cannon.cannonCount
+        );
+      }
+
+      const towersRemaining = sim.towers.towers.filter((t) => t.rewardType !== 'upgrade' && !t.isDestroyed).length;
       const bossesRemaining = sim.bosses.bosses.filter((b) => !b.isDefeated).length;
       hud.update(
         sim.base.hp,
@@ -427,6 +497,7 @@ function init(): void {
       // Idle backdrop rendering in menu
       cannonRender.update();
       mobRender.update(sim.pool);
+      panelRender.update(sim.panels.panels);
       towerRender.update(sim.towers.towers);
       bossRender.update(sim.bosses.bosses);
       pickupRender.update(dt, sim.pickups.pickups, camera);

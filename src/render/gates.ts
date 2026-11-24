@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Gate, GateKind } from '../sim/gates';
 import { CONFIG } from '../config/constants';
 
@@ -136,6 +137,8 @@ export class GateRenderer {
   public buildGates(gates: readonly Gate[]): void {
     this.dispose();
 
+    const lineGeos: THREE.BufferGeometry[] = [];
+
     for (const gate of gates) {
       const geometry = new THREE.PlaneGeometry(gate.width, CONFIG.GATES.HEIGHT);
       const material = GateRenderer.getOrCreateMaterial(gate.kind, gate.value);
@@ -145,26 +148,26 @@ export class GateRenderer {
       // Align banner strictly with the road cross-section (parallel to road X-axis)
       mesh.rotation.y = Math.PI;
 
-      // Add a thin glowing base energy line on the road beneath the gate (parallel to road X-axis)
+      // Add a thin glowing base energy line on the road beneath the gate
       const lineGeom = new THREE.PlaneGeometry(gate.width, 0.15);
       lineGeom.rotateX(-Math.PI / 2);
-      const lineColor =
-        gate.kind === 'mul'
-          ? 0x4ade80
-          : gate.kind === 'add'
-            ? 0x38bdf8
-            : 0xf87171;
+      lineGeom.translate(gate.x, 0.05, gate.z);
+      lineGeos.push(lineGeom);
+
+      this.scene.add(mesh);
+      this.gateMeshes.push(mesh);
+    }
+
+    if (lineGeos.length > 0) {
+      const mergedLineGeo = BufferGeometryUtils.mergeGeometries(lineGeos, false);
       const lineMat = new THREE.MeshBasicMaterial({
-        color: lineColor,
+        color: 0x38bdf8,
         transparent: false,
         side: THREE.DoubleSide
       });
-      const lineMesh = new THREE.Mesh(lineGeom, lineMat);
-      lineMesh.position.set(gate.x, 0.05, gate.z);
-
-      this.scene.add(mesh);
-      this.scene.add(lineMesh);
-      this.gateMeshes.push(mesh, lineMesh);
+      const linesMesh = new THREE.Mesh(mergedLineGeo, lineMat);
+      this.scene.add(linesMesh);
+      this.gateMeshes.push(linesMesh);
     }
   }
 

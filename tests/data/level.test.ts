@@ -7,13 +7,13 @@ describe('Level Data & Zod Validation (M4)', () => {
     const level = getLevel1Data();
     expect(level.id).toBe(1);
     expect(level.name).toBe('Desert Outpost');
-    expect(level.gates.length).toBe(2);
-    expect(level.towers.length).toBe(1);
+    expect(level.gates.length).toBe(5);
+    expect(level.towers.length).toBe(3);
     expect(level.bosses.length).toBe(1);
     expect(level.waves.length).toBe(3);
 
     const gates = getLevelGates();
-    expect(gates.length).toBe(2);
+    expect(gates.length).toBe(5);
   });
 
   it('rejects level if tower coordinates exceed road boundary', () => {

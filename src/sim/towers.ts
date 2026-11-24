@@ -1,6 +1,7 @@
 import { CONFIG } from '../config/constants';
 import { MobPool, despawnMob, spawnMob } from './pool';
 import { SeededRNG } from './rng';
+import { CannonSim } from './cannon';
 
 export interface TowerData {
   readonly id: number;
@@ -8,7 +9,7 @@ export interface TowerData {
   readonly z: number;
   readonly radius: number;
   readonly maxHp: number;
-  readonly rewardType: 'burst_units' | 'multiplier_burst';
+  readonly rewardType: 'burst_units' | 'multiplier_burst' | 'upgrade';
   readonly rewardValue: number;
 }
 
@@ -19,7 +20,7 @@ export class TowerSim {
   public readonly radius: number;
   public readonly maxHp: number;
   public hp: number;
-  public readonly rewardType: 'burst_units' | 'multiplier_burst';
+  public readonly rewardType: 'burst_units' | 'multiplier_burst' | 'upgrade';
   public readonly rewardValue: number;
   public isDestroyed: boolean = false;
 
@@ -66,6 +67,8 @@ export class TowerManager {
 
   public isAllTowersDestroyed(): boolean {
     for (let i = 0; i < this.towers.length; i++) {
+      // Only count mandatory objective towers, not optional crates or statues
+      if (this.towers[i].rewardType === 'upgrade') continue;
       if (!this.towers[i].isDestroyed) {
         return false;
       }
@@ -79,7 +82,7 @@ export class TowerManager {
    * and triggers reward payouts upon tower destruction.
    * Zero heap allocations during frame tick.
    */
-  public update(pool: MobPool, rng: SeededRNG): void {
+  public update(pool: MobPool, rng: SeededRNG, cannon?: CannonSim): void {
     this.justDestroyedTower = false;
     this.justDamagedTower = false;
     if (this.towers.length === 0 || pool.count === 0) return;
@@ -120,7 +123,7 @@ export class TowerManager {
             tower.hp = 0;
             tower.isDestroyed = true;
             this.justDestroyedTower = true;
-            this.grantReward(tower, pool, rng);
+            this.grantReward(tower, pool, rng, cannon);
             break; // Tower destroyed; stop checking further mobs for this tower
           }
         }
@@ -128,24 +131,53 @@ export class TowerManager {
     }
   }
 
-  private grantReward(tower: TowerSim, pool: MobPool, rng: SeededRNG): void {
-    if (tower.rewardType === 'burst_units') {
-      const burstCount = tower.rewardValue;
-      for (let i = 0; i < burstCount; i++) {
-        // Radial dispersion burst moving forward
-        const angle = rng.nextRange(-Math.PI * 0.4, Math.PI * 0.4);
-        const speed = rng.nextRange(8, 14);
-        const vx = Math.sin(angle) * speed * 0.5;
-        const vz = Math.cos(angle) * speed;
-
-        const spawnX = Math.max(
-          CONFIG.ROAD_X_MIN + CONFIG.MOB_RADIUS,
-          Math.min(CONFIG.ROAD_X_MAX - CONFIG.MOB_RADIUS, tower.x + rng.nextRange(-0.8, 0.8))
-        );
-        const spawnZ = tower.z + rng.nextRange(0.2, 1.5);
-
-        spawnMob(pool, spawnX, spawnZ, vx, vz, 0, 0, 1, 1, 1);
+  private grantReward(
+    tower: TowerSim,
+    pool: MobPool,
+    rng: SeededRNG,
+    cannon?: CannonSim
+  ): void {
+    if (tower.rewardType === 'upgrade') {
+      if (tower.rewardValue === 1) {
+        // Crate: +1 cannon tier, capped at Tier 1. Fallback: 25 units
+        if (cannon && cannon.tier < 1) {
+          cannon.upgradeTier();
+        } else {
+          this.spawnBurst(tower, pool, rng, 25);
+        }
+      } else if (tower.rewardValue === 2) {
+        // Statue: sets Tier 2 directly. Fallback: 50 units
+        if (cannon && cannon.tier < 2) {
+          cannon.setTier(2);
+        } else {
+          this.spawnBurst(tower, pool, rng, 50);
+        }
       }
+    } else if (tower.rewardType === 'burst_units') {
+      this.spawnBurst(tower, pool, rng, tower.rewardValue);
+    }
+  }
+
+  private spawnBurst(
+    tower: TowerSim,
+    pool: MobPool,
+    rng: SeededRNG,
+    burstCount: number
+  ): void {
+    for (let i = 0; i < burstCount; i++) {
+      // Radial dispersion burst moving forward
+      const angle = rng.nextRange(-Math.PI * 0.4, Math.PI * 0.4);
+      const speed = rng.nextRange(8, 14);
+      const vx = Math.sin(angle) * speed * 0.5;
+      const vz = Math.cos(angle) * speed;
+
+      const spawnX = Math.max(
+        CONFIG.ROAD_X_MIN + CONFIG.MOB_RADIUS,
+        Math.min(CONFIG.ROAD_X_MAX - CONFIG.MOB_RADIUS, tower.x + rng.nextRange(-0.8, 0.8))
+      );
+      const spawnZ = tower.z + rng.nextRange(0.2, 1.5);
+
+      spawnMob(pool, spawnX, spawnZ, vx, vz, 0, 0, 1, 1, 1);
     }
   }
 }

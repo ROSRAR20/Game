@@ -234,13 +234,13 @@ export class GateManager {
       case 'mul': {
         // xN multiplies this unit into N units (creates (N - 1) * weight new clones)
         const clonesNeeded = (gate.value - 1) * unitWeight;
-        return this.spawnOrQueueClones(
+        return this.processCloneSpawnsWithCap(
           pool,
           gate,
+          passingSlot,
           clonesNeeded,
           unitX,
           vz,
-          gate.id,
           immediateBudget
         );
       }
@@ -248,13 +248,13 @@ export class GateManager {
       case 'add': {
         // +N grants N extra clones per unit passing through (persistent gate, active on every mob)
         const clonesNeeded = gate.value * unitWeight;
-        return this.spawnOrQueueClones(
+        return this.processCloneSpawnsWithCap(
           pool,
           gate,
+          passingSlot,
           clonesNeeded,
           unitX,
           vz,
-          gate.id,
           immediateBudget
         );
       }
@@ -283,6 +283,59 @@ export class GateManager {
         return 0;
       }
     }
+  }
+
+  private processCloneSpawnsWithCap(
+    pool: MobPool,
+    gate: Gate,
+    passingSlot: number,
+    clonesNeeded: number,
+    unitX: number,
+    vz: number,
+    immediateBudget: number
+  ): number {
+    if (pool.count >= CONFIG.CAP_MERGE.POOL_THRESHOLD) {
+      // Pool is at or above threshold (3,000): all clones overflow and merge into passing mob weight
+      const currentWeight = pool.weight[passingSlot];
+      const maxWeight = CONFIG.CAP_MERGE.MAX_UNIT_WEIGHT;
+      pool.weight[passingSlot] = Math.min(maxWeight, currentWeight + clonesNeeded);
+      return 0;
+    }
+
+    const availableSlots = CONFIG.CAP_MERGE.POOL_THRESHOLD - pool.count;
+    if (clonesNeeded <= availableSlots) {
+      // Normal spawn: all clones fit
+      return this.spawnOrQueueClones(
+        pool,
+        gate,
+        clonesNeeded,
+        unitX,
+        vz,
+        gate.id,
+        immediateBudget
+      );
+    }
+
+    // Partial overflow: spawn available slots, merge remainder into passing mob weight
+    const spawnCount = availableSlots;
+    const overflow = clonesNeeded - spawnCount;
+
+    const currentWeight = pool.weight[passingSlot];
+    const maxWeight = CONFIG.CAP_MERGE.MAX_UNIT_WEIGHT;
+    pool.weight[passingSlot] = Math.min(maxWeight, currentWeight + overflow);
+
+    if (spawnCount > 0) {
+      return this.spawnOrQueueClones(
+        pool,
+        gate,
+        spawnCount,
+        unitX,
+        vz,
+        gate.id,
+        immediateBudget
+      );
+    }
+    return 0;
   }
 
   private spawnOrQueueClones(

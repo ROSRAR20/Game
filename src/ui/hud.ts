@@ -25,6 +25,13 @@ export class HudController {
   private levelBadgeEl: HTMLElement | null = null;
   private levelTitleEl: HTMLElement | null = null;
   private btnPauseMenu: HTMLElement | null = null;
+  private levelBannerEl: HTMLElement | null = null;
+  private endlessBannerEl: HTMLElement | null = null;
+  private hudEndlessTime: HTMLElement | null = null;
+  private hudEndlessScore: HTMLElement | null = null;
+  private hudEndlessBest: HTMLElement | null = null;
+  private hudCannonCount: HTMLElement | null = null;
+  private lastEndlessUpdateMs: number = 0;
 
   private lastHp: number = CONFIG.BASE_MAX_HP;
   private vignetteTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -56,6 +63,12 @@ export class HudController {
     this.levelBadgeEl = document.getElementById('hud-level-badge');
     this.levelTitleEl = document.getElementById('hud-level-title');
     this.btnPauseMenu = document.getElementById('btn-pause-menu');
+    this.levelBannerEl = document.getElementById('level-banner');
+    this.endlessBannerEl = document.getElementById('endless-hud-banner');
+    this.hudEndlessTime = document.getElementById('hud-endless-time');
+    this.hudEndlessScore = document.getElementById('hud-endless-score');
+    this.hudEndlessBest = document.getElementById('hud-endless-best');
+    this.hudCannonCount = document.getElementById('hud-cannon-count');
 
     if (this.restartBtn) {
       this.restartBtn.addEventListener('click', () => {
@@ -96,6 +109,46 @@ export class HudController {
       this.btnPauseMenu.addEventListener('click', () => {
         this.callbacks.onOpenMenu();
       });
+    }
+  }
+
+  public setEndlessMode(isEndless: boolean): void {
+    if (this.endlessBannerEl) {
+      this.endlessBannerEl.style.display = isEndless ? 'flex' : 'none';
+    }
+    if (this.levelBannerEl) {
+      this.levelBannerEl.style.display = isEndless ? 'none' : 'block';
+    }
+  }
+
+  /**
+   * Throttled 10 Hz DOM update for Endless Run live stats.
+   */
+  public updateEndless(
+    timeSec: number,
+    score: number,
+    bestScore: number,
+    cannonCount: number
+  ): void {
+    const now = performance.now();
+    if (now - this.lastEndlessUpdateMs < 100) {
+      return; // 10 Hz throttle
+    }
+    this.lastEndlessUpdateMs = now;
+
+    if (this.hudEndlessTime) {
+      const m = Math.floor(timeSec / 60);
+      const s = Math.floor(timeSec % 60);
+      this.hudEndlessTime.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+    if (this.hudEndlessScore) {
+      this.hudEndlessScore.textContent = `${score.toLocaleString()} PTS`;
+    }
+    if (this.hudEndlessBest) {
+      this.hudEndlessBest.textContent = `BEST: ${bestScore.toLocaleString()}`;
+    }
+    if (this.hudCannonCount) {
+      this.hudCannonCount.textContent = `CANNON x${cannonCount}`;
     }
   }
 
@@ -196,6 +249,26 @@ export class HudController {
     if (this.gameOverModal && this.gameOverModal.style.display !== 'flex') {
       this.gameOverModal.style.display = 'flex';
     }
+  }
+
+  public showEndlessGameOver(
+    score: number,
+    survivalSeconds: number,
+    bestScore: number,
+    isNewBest: boolean
+  ): void {
+    const timeEl = document.getElementById('go-time');
+    const scoreEl = document.getElementById('go-score');
+    const bestEl = document.getElementById('go-best');
+    const formatTime = (totalSec: number) => {
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
+    if (timeEl) timeEl.textContent = formatTime(survivalSeconds);
+    if (scoreEl) scoreEl.textContent = `${score.toLocaleString()}${isNewBest ? ' 🔥 NEW BEST!' : ''}`;
+    if (bestEl) bestEl.textContent = `${bestScore.toLocaleString()} PTS`;
+    this.showGameOver();
   }
 
   public hideGameOver(): void {

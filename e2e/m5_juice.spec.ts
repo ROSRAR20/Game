@@ -36,9 +36,10 @@ test.describe('Milestone M5 Juice: Audio, Haptics, VFX, and Unit Tiers', () => {
 
   test('verifies "LV+1" pickup collection and cannon tier progression', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/?debug');
+    // Pickup 201 was removed from Level 1 in lane-layout; test on Level 2 where it remains active
+    await page.goto('/?level=2&debug');
 
-    // Spawn player mobs right before pickup at Z=24
+    // Spawn player mobs right before pickup at Z=22
     await page.evaluate(() => {
       const win = window as unknown as {
         __sim?: {
@@ -48,11 +49,11 @@ test.describe('Milestone M5 Juice: Audio, Haptics, VFX, and Unit Tiers', () => {
         __spawnBlueMobs?: (count: number, z: number) => void;
       };
       if (win.__spawnBlueMobs) {
-        win.__spawnBlueMobs(10, 23.0);
+        win.__spawnBlueMobs(10, 21.0);
       }
     });
 
-    // Wait for units to march over Z=24
+    // Wait for units to march over Z=22
     await page.waitForTimeout(600);
 
     const cannonTier = await page.evaluate(() => {
@@ -61,7 +62,7 @@ test.describe('Milestone M5 Juice: Audio, Haptics, VFX, and Unit Tiers', () => {
       };
       return {
         tier: win.__sim?.cannon.tier,
-        isCollected: win.__sim?.pickups.pickups[0].isCollected
+        isCollected: win.__sim?.pickups.pickups[0]?.isCollected
       };
     });
 

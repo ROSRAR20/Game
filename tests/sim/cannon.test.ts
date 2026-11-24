@@ -48,35 +48,58 @@ describe('Cannon Simulation', () => {
     }
   });
 
-  it('upgrades tier and spawns upgraded stats (Tier 1 & Tier 2)', () => {
+  it('upgrades tier and spawns upgraded stats (Model 1: count=number of shooters, tier=shooter type)', () => {
     const cannon = new CannonSim();
     const pool = createMobPool(20);
     const rng = new SeededRNG(42);
 
     expect(cannon.tier).toBe(0);
+    expect(cannon.cannonCount).toBe(1);
+
+    // Set cannon count to 3 shooters
+    cannon.setCannonCount(3);
+    expect(cannon.cannonCount).toBe(3);
+
+    // Fire at count 3, tier 0: fires 3 shots per volley (1 per shooter)
+    cannon.update(0.2, pool, rng);
+    expect(pool.count).toBe(3);
+    for (let i = 0; i < 3; i++) {
+      const slot = pool.activeIndices[i];
+      expect(pool.tier[slot]).toBe(0);
+      expect(pool.hp[slot]).toBe(1);
+      expect(pool.damage[slot]).toBe(1);
+    }
+
+    // Upgrade to tier 1
     expect(cannon.upgradeTier()).toBe(true);
     expect(cannon.tier).toBe(1);
 
-    // Fire at tier 1
+    // Fire at count 3, tier 1: fires 3 shots with tier 1 stats (hp 2, dmg 1)
+    const prevCountT1 = pool.count;
     cannon.update(0.2, pool, rng);
-    expect(pool.count).toBeGreaterThan(0);
-    const slotT1 = pool.activeIndices[0];
-    expect(pool.tier[slotT1]).toBe(1);
-    expect(pool.hp[slotT1]).toBe(2);
-    expect(pool.damage[slotT1]).toBe(2);
+    expect(pool.count - prevCountT1).toBe(3);
+    for (let i = prevCountT1; i < prevCountT1 + 3; i++) {
+      const slot = pool.activeIndices[i];
+      expect(pool.tier[slot]).toBe(1);
+      expect(pool.hp[slot]).toBe(2);
+      expect(pool.damage[slot]).toBe(1);
+    }
 
     // Upgrade to tier 2
     expect(cannon.upgradeTier()).toBe(true);
     expect(cannon.tier).toBe(2);
     expect(cannon.upgradeTier()).toBe(false); // Max tier capped at 2
 
-    // Fire at tier 2
-    const prevCount = pool.count;
+    // Fire at count 3, tier 2: fires 3 shots with tier 2 stats (hp 2, dmg 2)
+    const prevCountT2 = pool.count;
     cannon.update(0.2, pool, rng);
-    const slotT2 = pool.activeIndices[prevCount];
-    expect(pool.tier[slotT2]).toBe(2);
-    expect(pool.hp[slotT2]).toBe(4);
-    expect(pool.damage[slotT2]).toBe(3);
+    expect(pool.count - prevCountT2).toBe(3);
+    for (let i = prevCountT2; i < prevCountT2 + 3; i++) {
+      const slot = pool.activeIndices[i];
+      expect(pool.tier[slot]).toBe(2);
+      expect(pool.hp[slot]).toBe(2);
+      expect(pool.damage[slot]).toBe(2);
+    }
   });
 
   it('collects LV+1 pickup on blue mob collision and upgrades cannon', async () => {

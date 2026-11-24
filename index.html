@@ -163,6 +163,54 @@
         background: linear-gradient(90deg, #ef4444 0%, #f97316 100%);
       }
 
+      /* Endless Mode HUD Banner */
+      #endless-hud-banner {
+        position: absolute;
+        top: calc(env(safe-area-inset-top, 0px) + 52px);
+        left: calc(env(safe-area-inset-left, 0px) + 12px);
+        right: calc(env(safe-area-inset-right, 0px) + 12px);
+        display: none;
+        flex-direction: column;
+        gap: 6px;
+        pointer-events: none;
+        z-index: 500;
+      }
+
+      .endless-stats-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        pointer-events: none;
+      }
+
+      .hud-stat-pill {
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        border-radius: 8px;
+        padding: 4px 8px;
+        font-family: ui-monospace, SFMono-Regular, monospace;
+        font-size: 11px;
+        font-weight: 700;
+        color: #38bdf8;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        pointer-events: none;
+      }
+
+      .hud-cannon-badge {
+        align-self: flex-start;
+        background: rgba(14, 165, 233, 0.25);
+        border: 1px solid #38bdf8;
+        border-radius: 6px;
+        padding: 2px 8px;
+        font-size: 10px;
+        font-weight: 800;
+        color: #f0f9ff;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        pointer-events: none;
+      }
+
       /* Level Banner & Objective Tracker */
       #level-banner {
         position: absolute;
@@ -569,6 +617,16 @@
             <div id="base-hp-fill"></div>
           </div>
         </div>
+        <div id="endless-hud-banner">
+          <div class="endless-stats-row">
+            <span id="hud-endless-time" class="hud-stat-pill">00:00</span>
+            <span id="hud-endless-score" class="hud-stat-pill">0 PTS</span>
+            <span id="hud-endless-best" class="hud-stat-pill">BEST: 0</span>
+          </div>
+          <div class="endless-badges-row">
+            <span id="hud-cannon-count" class="hud-cannon-badge">CANNON x1</span>
+          </div>
+        </div>
         <div id="level-banner">
           <div class="level-title-row">
             <span id="hud-level-badge" class="level-badge">LVL 1</span>
@@ -622,8 +680,13 @@
         <div class="game-over-card">
           <h1 class="game-over-title">BASE DESTROYED</h1>
           <p class="game-over-subtitle">The horde reached your defense line.</p>
+          <div id="go-stats" style="margin: 16px 0; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; color: #94a3b8; text-align: left; background: rgba(0,0,0,0.3); padding: 12px 14px; border-radius: 8px; line-height: 1.6;">
+            <div style="display: flex; justify-content: space-between;"><span>TIME:</span><span id="go-time" style="color: #ffffff; font-weight: bold;">00:00</span></div>
+            <div style="display: flex; justify-content: space-between;"><span>SCORE:</span><span id="go-score" style="color: #38bdf8; font-weight: bold;">0</span></div>
+            <div style="display: flex; justify-content: space-between;"><span>BEST:</span><span id="go-best" style="color: #facc15; font-weight: bold;">0</span></div>
+          </div>
           <div class="modal-btn-stack">
-            <button id="btn-restart" class="action-btn btn-danger" type="button">RESTART MISSION</button>
+            <button id="btn-restart" class="action-btn btn-danger" type="button">RETRY RUN</button>
             <button id="btn-gameover-menu" class="action-btn btn-secondary" type="button">MAIN MENU</button>
           </div>
         </div>

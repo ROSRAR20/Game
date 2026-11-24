@@ -96,4 +96,70 @@ describe('Frustum Ground Raycast', () => {
     expect(rangeB.farZ - rangeB.nearZ).toBeGreaterThan(45);
     expect(rangeC.farZ - rangeC.nearZ).toBeGreaterThan(58);
   });
+
+  it('computes exact ground ranges and entity NDC projection for Proposed Camera Options A and B', () => {
+    // Current Camera
+    const currentCam = makeCamera(40, 25.5, 56, 20, -8.8, -9, 16);
+    // Camera Option A: Symmetric Corridor (pitch 42, yaw 0, fov 56, height 22, posX 0, posZ -9)
+    const optionACam = makeCamera(42, 0, 56, 22, 0, -9, 16.5);
+    // Camera Option B: Balanced Diagonal (pitch 44, yaw 10, fov 54, height 23, posX -3.5, posZ -10)
+    const optionBCam = makeCamera(44, 10, 54, 23, -3.5, -10, 18);
+
+    const entities = [
+      { name: 'Cannon Left', x: -5, z: 5 },
+      { name: 'Cannon Center', x: 0, z: 5 },
+      { name: 'Cannon Right', x: 5, z: 5 },
+      { name: 'Road Edge Left (Z=5)', x: -6, z: 5 },
+      { name: 'Road Edge Right (Z=5)', x: 6, z: 5 },
+      { name: 'Crate (Z=8)', x: -4, z: 8 },
+      { name: 'Statue (Z=14)', x: 4, z: 14 },
+      { name: 'Centre Gate 1 (Z=18)', x: -1, z: 18 },
+      { name: 'Centre Gate 2 (Z=18)', x: 1, z: 18 },
+      { name: 'Left Tunnel Mouth (Z=22)', x: -6, z: 22 },
+      { name: 'Mid-Line Center (Z=22)', x: 0, z: 22 },
+      { name: 'Right Tunnel Mouth (Z=22)', x: 6, z: 22 },
+      { name: 'Guardian Tower 1 (Z=30)', x: 0, z: 30 },
+      { name: 'Boss 101 (Z=44)', x: 0, z: 44 },
+      { name: 'Horde Carpet (Z=50)', x: 0, z: 50 },
+    ];
+
+    const projectToNDC = (cam: THREE.PerspectiveCamera, x: number, z: number) => {
+      const v = new THREE.Vector3(x, 0, z);
+      v.project(cam);
+      return { ndcX: Number(v.x.toFixed(3)), ndcY: Number(v.y.toFixed(3)), inBounds: Math.abs(v.x) <= 1.0 && Math.abs(v.y) <= 1.0 };
+    };
+
+    console.log('\n=== NDC COMPARISON: CURRENT vs OPTION A vs OPTION B ===');
+    const table = entities.map((e) => {
+      const cur = projectToNDC(currentCam, e.x, e.z);
+      const optA = projectToNDC(optionACam, e.x, e.z);
+      const optB = projectToNDC(optionBCam, e.x, e.z);
+      return {
+        entity: e.name,
+        pos: `(${e.x}, ${e.z})`,
+        currentNDC: `(${cur.ndcX}, ${cur.ndcY}) ${cur.inBounds ? 'OK' : 'OUT'}`,
+        optionANDC: `(${optA.ndcX}, ${optA.ndcY}) ${optA.inBounds ? 'OK' : 'OUT'}`,
+        optionBNDC: `(${optB.ndcX}, ${optB.ndcY}) ${optB.inBounds ? 'OK' : 'OUT'}`
+      };
+    });
+    console.table(table);
+
+    const rangeA = computeFrustumGroundRange(optionACam);
+    console.log('Camera Option A (Symmetric) Raycast Ground Range:', {
+      nearZ: Number(rangeA.nearZ.toFixed(2)),
+      farZ: Number(rangeA.farZ.toFixed(2)),
+      centerNearZ: Number(rangeA.centerNearZ.toFixed(2)),
+      centerFarZ: Number(rangeA.centerFarZ.toFixed(2)),
+      span: Number((rangeA.farZ - rangeA.nearZ).toFixed(2))
+    });
+
+    const rangeB = computeFrustumGroundRange(optionBCam);
+    console.log('Camera Option B (Balanced Diagonal) Raycast Ground Range:', {
+      nearZ: Number(rangeB.nearZ.toFixed(2)),
+      farZ: Number(rangeB.farZ.toFixed(2)),
+      centerNearZ: Number(rangeB.centerNearZ.toFixed(2)),
+      centerFarZ: Number(rangeB.centerFarZ.toFixed(2)),
+      span: Number((rangeB.farZ - rangeB.nearZ).toFixed(2))
+    });
+  });
 });
