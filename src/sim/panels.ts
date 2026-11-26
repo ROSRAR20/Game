@@ -13,10 +13,17 @@ export interface MovingPanel {
   isCollected: boolean;
 }
 
+export interface PanelBonusEvent {
+  x: number;
+  z: number;
+  amount: number;
+}
+
 export interface PanelCollisionResult {
   collectedCount: number;
   newShooterCount: number;
   bonusScoreAwarded: number;
+  bonusEvent: PanelBonusEvent | null;
 }
 
 export class PanelManager {
@@ -70,6 +77,7 @@ export class PanelManager {
   ): PanelCollisionResult {
     let bonusScoreAwarded = 0;
     let collectedCount = 0;
+    let bonusEvent: PanelBonusEvent | null = null;
 
     // 1. Spawner progression
     this.spawnTimer += dt;
@@ -102,8 +110,9 @@ export class PanelManager {
         if (cannon.cannonCount < CONFIG.PANELS.MAX_CANNON_COUNT) {
           cannon.setCannonCount(cannon.cannonCount + 1);
         } else {
-          // At cap of 6 shooters, award +250 score
+          // At cap of 6 shooters, award +250 score and emit popup event
           bonusScoreAwarded += CONFIG.PANELS.SCORE_AT_MAX;
+          bonusEvent = { x: p.x, z: p.z, amount: CONFIG.PANELS.SCORE_AT_MAX };
         }
 
         this.panels.splice(i, 1);
@@ -119,7 +128,8 @@ export class PanelManager {
     return {
       collectedCount,
       newShooterCount: cannon.cannonCount,
-      bonusScoreAwarded
+      bonusScoreAwarded,
+      bonusEvent
     };
   }
 }

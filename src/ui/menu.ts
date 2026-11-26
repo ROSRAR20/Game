@@ -76,7 +76,7 @@ export class MenuController {
         const s = totalSec % 60;
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
       };
-      this.menuSelectedLevelEl.textContent = `BEST: ${saveData.bestScore.toLocaleString()} PTS (${formatTime(saveData.bestTimeSec)})`;
+      this.menuSelectedLevelEl.textContent = `BEST: ${saveData.bestScore.toLocaleString()} PTS · ${formatTime(saveData.bestTimeSec)} · ${saveData.totalKills.toLocaleString()} KILLS`;
     }
 
     if (this.btnPlay) {

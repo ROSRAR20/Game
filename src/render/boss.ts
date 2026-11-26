@@ -10,96 +10,128 @@ interface BossVisual {
   context: CanvasRenderingContext2D;
   texture: THREE.CanvasTexture;
   lastHp: number;
+  lastMaxHp: number;
 }
 
 export class BossRenderer {
   private visuals: Map<number, BossVisual> = new Map();
+  private endlessPoolVisual: BossVisual | null = null;
+  private isEndlessMode: boolean = false;
   private scene: THREE.Scene;
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
   }
 
+  private createBossVisual(radius: number): BossVisual {
+    const group = new THREE.Group();
+
+    // 1. Stylized low-poly Boss chassis
+    const bodyGeo = new THREE.CylinderGeometry(radius * 0.85, radius * 1.1, 3.6, 8);
+    const bodyMat = new THREE.MeshLambertMaterial({
+      color: 0xf59e0b, // Amber gold
+      emissive: 0x9a3412, // Crimson amber glow
+      emissiveIntensity: 0.35
+    });
+    const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+    bodyMesh.position.y = 1.8;
+    group.add(bodyMesh);
+
+    // Crown / Pauldrons ring
+    const crownGeo = new THREE.CylinderGeometry(radius * 1.2, radius * 0.9, 0.8, 8);
+    const crownMat = new THREE.MeshLambertMaterial({
+      color: 0xd97706,
+      emissive: 0x78350f,
+      emissiveIntensity: 0.3
+    });
+    const crownMesh = new THREE.Mesh(crownGeo, crownMat);
+    crownMesh.position.y = 3.6;
+    group.add(crownMesh);
+
+    // 2. Floating 3D Health Bar
+    const canvas = document.createElement('canvas');
+    canvas.width = 384;
+    canvas.height = 128;
+    const context = canvas.getContext('2d')!;
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+
+    const hpBarGeo = new THREE.PlaneGeometry(3.6, 1.2);
+    const hpBarMat = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
+    const hpBarMesh = new THREE.Mesh(hpBarGeo, hpBarMat);
+    hpBarMesh.position.y = 4.1;
+    hpBarMesh.rotation.y = Math.PI;
+    group.add(hpBarMesh);
+
+    this.scene.add(group);
+
+    return {
+      group,
+      bodyMesh,
+      crownMesh,
+      hpBarMesh,
+      canvas,
+      context,
+      texture,
+      lastHp: -1,
+      lastMaxHp: -1
+    };
+  }
+
+  /**
+   * Pre-allocates and pools a single boss visual for Endless mode (reused across all waves).
+   */
+  public initEndlessPool(radius: number = 2.0): void {
+    this.isEndlessMode = true;
+    this.disposeCampaignVisuals();
+    if (!this.endlessPoolVisual) {
+      this.endlessPoolVisual = this.createBossVisual(radius);
+    }
+    this.endlessPoolVisual.group.visible = false;
+  }
+
   public buildBosses(bosses: BossSim[]): void {
-    this.dispose();
+    this.isEndlessMode = false;
+    if (this.endlessPoolVisual) {
+      this.endlessPoolVisual.group.visible = false;
+    }
+    this.disposeCampaignVisuals();
 
     for (let i = 0; i < bosses.length; i++) {
       const boss = bosses[i];
-      const group = new THREE.Group();
-      group.position.set(boss.x, 0, boss.z);
-
-      // 1. Stylized low-poly Boss chassis
-      const bodyGeo = new THREE.CylinderGeometry(
-        boss.radius * 0.85,
-        boss.radius * 1.1,
-        3.6,
-        8
-      );
-      const bodyMat = new THREE.MeshLambertMaterial({
-        color: 0xf59e0b, // Amber gold
-        emissive: 0x9a3412, // Crimson amber glow
-        emissiveIntensity: 0.35
-      });
-      const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
-      bodyMesh.position.y = 1.8;
-      group.add(bodyMesh);
-
-      // Crown / Pauldrons ring
-      const crownGeo = new THREE.CylinderGeometry(
-        boss.radius * 1.2,
-        boss.radius * 0.9,
-        0.8,
-        8
-      );
-      const crownMat = new THREE.MeshLambertMaterial({
-        color: 0xd97706,
-        emissive: 0x78350f,
-        emissiveIntensity: 0.3
-      });
-      const crownMesh = new THREE.Mesh(crownGeo, crownMat);
-      crownMesh.position.y = 3.6;
-      group.add(crownMesh);
-
-      // 2. Floating 3D Health Bar
-      const canvas = document.createElement('canvas');
-      canvas.width = 384;
-      canvas.height = 128;
-      const context = canvas.getContext('2d')!;
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.minFilter = THREE.LinearFilter;
-      texture.magFilter = THREE.LinearFilter;
-
-      const hpBarGeo = new THREE.PlaneGeometry(3.6, 1.2);
-      const hpBarMat = new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        side: THREE.DoubleSide
-      });
-      const hpBarMesh = new THREE.Mesh(hpBarGeo, hpBarMat);
-      hpBarMesh.position.y = 4.8;
-      // Parallel to road cross-section (matches gate banners and towers)
-      hpBarMesh.rotation.y = Math.PI;
-      group.add(hpBarMesh);
-
-      this.scene.add(group);
-
-      const visual: BossVisual = {
-        group,
-        bodyMesh,
-        crownMesh,
-        hpBarMesh,
-        canvas,
-        context,
-        texture,
-        lastHp: -1
-      };
-
+      const visual = this.createBossVisual(boss.radius);
+      visual.group.position.set(boss.x, 0, boss.z);
       this.drawHpBar(visual, boss.hp, boss.maxHp);
+      visual.lastHp = boss.hp;
+      visual.lastMaxHp = boss.maxHp;
       this.visuals.set(boss.id, visual);
     }
   }
 
   public update(bosses: BossSim[]): void {
+    if (this.isEndlessMode) {
+      const visual = this.endlessPoolVisual;
+      if (!visual) return;
+      const activeBoss = bosses.find((b) => !b.isDefeated);
+      if (!activeBoss) {
+        visual.group.visible = false;
+        return;
+      }
+      visual.group.visible = true;
+      visual.group.position.set(activeBoss.x, 0, activeBoss.z);
+      if (visual.lastHp !== activeBoss.hp || visual.lastMaxHp !== activeBoss.maxHp) {
+        this.drawHpBar(visual, activeBoss.hp, activeBoss.maxHp);
+        visual.lastHp = activeBoss.hp;
+        visual.lastMaxHp = activeBoss.maxHp;
+      }
+      return;
+    }
+
     for (let i = 0; i < bosses.length; i++) {
       const boss = bosses[i];
       const visual = this.visuals.get(boss.id);
@@ -113,9 +145,10 @@ export class BossRenderer {
       visual.group.visible = true;
       visual.group.position.set(boss.x, 0, boss.z);
 
-      if (visual.lastHp !== boss.hp) {
+      if (visual.lastHp !== boss.hp || visual.lastMaxHp !== boss.maxHp) {
         this.drawHpBar(visual, boss.hp, boss.maxHp);
         visual.lastHp = boss.hp;
+        visual.lastMaxHp = boss.maxHp;
       }
     }
   }
@@ -170,14 +203,27 @@ export class BossRenderer {
     texture.needsUpdate = true;
   }
 
-  public dispose(): void {
-    this.visuals.forEach((visual) => {
-      this.scene.remove(visual.group);
-      visual.texture.dispose();
-      visual.bodyMesh.geometry.dispose();
-      visual.crownMesh.geometry.dispose();
-      visual.hpBarMesh.geometry.dispose();
-    });
+  private disposeVisual(visual: BossVisual): void {
+    this.scene.remove(visual.group);
+    visual.texture.dispose();
+    visual.bodyMesh.geometry.dispose();
+    (visual.bodyMesh.material as THREE.Material).dispose();
+    visual.crownMesh.geometry.dispose();
+    (visual.crownMesh.material as THREE.Material).dispose();
+    visual.hpBarMesh.geometry.dispose();
+    (visual.hpBarMesh.material as THREE.Material).dispose();
+  }
+
+  private disposeCampaignVisuals(): void {
+    this.visuals.forEach((visual) => this.disposeVisual(visual));
     this.visuals.clear();
+  }
+
+  public dispose(): void {
+    this.disposeCampaignVisuals();
+    if (this.endlessPoolVisual) {
+      this.disposeVisual(this.endlessPoolVisual);
+      this.endlessPoolVisual = null;
+    }
   }
 }

@@ -10,6 +10,7 @@ import { TowerRenderer } from './render/towers';
 import { BossRenderer } from './render/boss';
 import { PickupRenderer } from './render/pickups';
 import { PanelRenderer } from './render/panels';
+import { StatueRenderer } from './render/statues';
 import { ParticleVFX, ScreenShake } from './render/vfx';
 import { SoundManager } from './audio/sound';
 import { HapticsManager, SaveManager, PlatformLifecycle, configureDisplay } from './platform';
@@ -101,6 +102,7 @@ function init(): void {
   const bossRender = new BossRenderer(scene);
   const pickupRender = new PickupRenderer(scene);
   const panelRender = new PanelRenderer(scene);
+  const statueRender = new StatueRenderer(scene);
   const vfx = new ParticleVFX(scene);
   const screenShake = new ScreenShake();
   const sound = new SoundManager();
@@ -123,12 +125,15 @@ function init(): void {
   let prevGameOver = false;
   let prevGameWon = false;
   let isInMenu = !skipMenuParam;
+  let isUserPaused = false;
+  const popupProjVec = new THREE.Vector3();
 
   const applyLevelVisuals = (levelData: LevelData) => {
     gateRender.buildGates(sim.gates.getGates());
     towerRender.buildTowers(sim.towers.towers);
     bossRender.buildBosses(sim.bosses.bosses);
     pickupRender.update(0, sim.pickups.pickups, camera);
+    statueRender.setVisible(false);
     hud.setLevel(levelData);
     hud.setEndlessMode(false);
     hud.reset(sim.base.maxHp);
@@ -140,8 +145,10 @@ function init(): void {
     if (tierParam > 0) sim.cannon.setTier(tierParam);
     gateRender.buildGates(sim.gates.getGates());
     towerRender.buildTowers([]);
-    bossRender.buildBosses([]);
+    bossRender.initEndlessPool(CONFIG.ENDLESS_BOSS.RADIUS);
     pickupRender.update(0, [], camera);
+    statueRender.setVisible(true);
+    statueRender.update(sim.statues.statues);
     hud.setEndlessMode(true);
     hud.reset(sim.base.maxHp);
   };
@@ -149,6 +156,7 @@ function init(): void {
   // Initialize gameplay HUD
   const hud = new HudController({
     onRestart: () => {
+      isUserPaused = false;
       sim.restart();
       if (sim.isEndless) {
         startEndlessRun();
@@ -162,6 +170,7 @@ function init(): void {
       prevGameWon = false;
     },
     onNextLevel: () => {
+      isUserPaused = false;
       const nextId = Math.min(TOTAL_LEVELS, sim.currentLevelId + 1);
       const lvl = sim.loadLevel(nextId);
       applyLevelVisuals(lvl);
@@ -172,10 +181,34 @@ function init(): void {
       SaveManager.save({ currentLevel: nextId });
     },
     onOpenMenu: () => {
+      isUserPaused = false;
       isInMenu = true;
+      hud.hidePause();
       hud.hideGameOver();
       hud.hideVictory();
       menu.showMainMenu(SaveManager.get(), sim.currentLevelId);
+    },
+    onPause: () => {
+      if (isInMenu || sim.base.isGameOver || sim.isGameWon) return;
+      isUserPaused = true;
+      hud.showPause(
+        sim.ticks / 60,
+        sim.isEndless ? sim.endless.getScore(sim.ticks) : 0,
+        sim.cannon.cannonCount,
+        sim.cannon.tier,
+        SaveManager.get().soundMuted
+      );
+    },
+    onResume: () => {
+      isUserPaused = false;
+      lastTime = performance.now();
+    },
+    onToggleSound: () => {
+      const isMuted = !SaveManager.get().soundMuted;
+      sound.setMuted(isMuted);
+      menu.updateSoundButton(isMuted);
+      SaveManager.save({ soundMuted: isMuted });
+      return isMuted;
     }
   });
 
@@ -363,15 +396,15 @@ function init(): void {
     // Adaptive quality monitoring
     adaptive.update(dt * 1000);
 
-    // Update input (only if gameplay is active)
-    if (!isInMenu) {
+    // Update input (only if gameplay is active and not paused)
+    if (!isInMenu && !isUserPaused) {
       input.update(dt);
     }
 
     if (bareStress) {
       bareStress.update(dt);
       cannonRender.update();
-    } else if (!isInMenu) {
+    } else if (!isInMenu && !isUserPaused) {
       // Step fixed 60 Hz simulation during active gameplay
       sim.update(dt);
 
@@ -439,6 +472,27 @@ function init(): void {
         sim.bosses.justDefeatedBoss = false;
       }
 
+      if (sim.lastStatueEvent?.destroyedStatue) {
+        const st = sim.lastStatueEvent.destroyedStatue;
+        vfx.spawnExplosion(st.x, 1.5, st.z, 32);
+        screenShake.addTrauma(0.45);
+        sound.playLevelUp();
+        HapticsManager.heavy();
+        sim.lastStatueEvent = null;
+      }
+
+      if (sim.lastPanelBonusEvent) {
+        const ev = sim.lastPanelBonusEvent;
+        popupProjVec.set(ev.x, 1.6, ev.z).project(camera);
+        const vp = viewport.getSize();
+        const screenX = (popupProjVec.x * 0.5 + 0.5) * vp.width;
+        const screenY = (-popupProjVec.y * 0.5 + 0.5) * vp.height;
+        hud.showMaxPanelPopup(screenX, screenY, ev.amount);
+        sound.playGatePass();
+        HapticsManager.medium();
+        sim.lastPanelBonusEvent = null;
+      }
+
       if (sim.isGameWon && !prevGameWon) {
         sound.playVictory();
         HapticsManager.success();
@@ -458,8 +512,18 @@ function init(): void {
         if (sim.isEndless) {
           const survivalSec = Math.floor(sim.ticks / 60);
           const score = sim.endless.getScore(sim.ticks);
-          SaveManager.recordRun(score, survivalSec, sim.endless.kills).then((res) => {
-            hud.showEndlessGameOver(score, survivalSec, res.data.bestScore, res.isNewBestScore);
+          const kills = sim.endless.kills;
+          const bossesDefeated = sim.endless.bossesDefeated;
+          SaveManager.recordRun(score, survivalSec, kills).then((res) => {
+            hud.showEndlessGameOver(
+              score,
+              survivalSec,
+              res.data.bestScore,
+              res.data.bestTimeSec,
+              kills,
+              bossesDefeated,
+              res.isNewBestScore
+            );
           });
         }
       }
@@ -468,6 +532,7 @@ function init(): void {
       cannonRender.update();
       mobRender.update(sim.pool);
       panelRender.update(sim.panels.panels);
+      statueRender.update(sim.statues.statues);
       towerRender.update(sim.towers.towers);
       bossRender.update(sim.bosses.bosses);
       pickupRender.update(dt, sim.pickups.pickups, camera);
@@ -475,11 +540,18 @@ function init(): void {
       screenShake.update(dt, camera, camBasePos);
 
       if (sim.isEndless) {
+        const activeBoss = sim.bosses.bosses.find((b) => !b.isDefeated);
         hud.updateEndless(
           sim.ticks / 60,
           sim.endless.getScore(sim.ticks),
           SaveManager.get().bestScore,
-          sim.cannon.cannonCount
+          sim.cannon.cannonCount,
+          sim.cannon.tier,
+          sim.cannon.overdriveTimer,
+          sim.endless.getBossCountdownSec(),
+          activeBoss ? activeBoss.hp : 0,
+          activeBoss ? activeBoss.maxHp : 0,
+          activeBoss ? activeBoss.id : 0
         );
       }
 
@@ -498,6 +570,7 @@ function init(): void {
       cannonRender.update();
       mobRender.update(sim.pool);
       panelRender.update(sim.panels.panels);
+      statueRender.update(sim.statues.statues);
       towerRender.update(sim.towers.towers);
       bossRender.update(sim.bosses.bosses);
       pickupRender.update(dt, sim.pickups.pickups, camera);

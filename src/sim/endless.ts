@@ -27,6 +27,9 @@ export class EndlessManager {
   public spawnTimer: number = 0;
   public kills: number = 0;
   public panelBonusScore: number = 0;
+  public bossesDefeated: number = 0;
+  public bossSpawnCount: number = 0;
+  public nextBossTimeSec: number = CONFIG.ENDLESS_BOSS.INTERVAL_SEC;
   public rng: SeededRNG;
   public config: EndlessConfig;
 
@@ -38,10 +41,22 @@ export class EndlessManager {
   }
 
   public reset(startAtSeconds: number = 0): void {
-    this.difficultyTime = Math.max(0, startAtSeconds);
+    const startSec = Math.max(0, startAtSeconds);
+    this.difficultyTime = startSec;
     this.spawnTimer = 0;
     this.kills = 0;
     this.panelBonusScore = 0;
+    this.bossesDefeated = 0;
+
+    // Align nextBossTimeSec so ?startAt=SECONDS only spawns the next upcoming boss (no backlog burst)
+    const interval = CONFIG.ENDLESS_BOSS.INTERVAL_SEC;
+    const passedIntervals = Math.floor(startSec / interval);
+    this.bossSpawnCount = passedIntervals;
+    this.nextBossTimeSec = (passedIntervals + 1) * interval;
+  }
+
+  public getBossCountdownSec(): number {
+    return Math.max(0, this.nextBossTimeSec - this.difficultyTime);
   }
 
   public setStartAt(seconds: number): void {

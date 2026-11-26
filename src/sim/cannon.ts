@@ -11,6 +11,7 @@ export class CannonSim {
   public fireInterval: number = 1 / CONFIG.CANNON_FIRE_RATE;
   public tier: number = 0; // 0 = Standard, 1 = Triple/Armored, 2 = Elite Squad
   public cannonCount: number = 1; // 1 to 6 shooters (Model 1 approved)
+  public overdriveTimer: number = 0; // > 0 when Overdrive buff is active (refreshes, never stacks)
   public justFired: boolean = false;
   public tierOption: TierStatOption = 'option1'; // Option 1 approved: Fixed weight 1, multi-projectile spread
 
@@ -44,7 +45,7 @@ export class CannonSim {
     this.cannonCount = Math.max(1, Math.min(6, Math.floor(count)));
   }
 
-  public upgradeTier(maxTier: number = 2): boolean {
+  public upgradeTier(maxTier: number = CONFIG.MAX_TIER): boolean {
     if (this.tier < maxTier) {
       this.setTier(this.tier + 1);
       return true;
@@ -53,7 +54,7 @@ export class CannonSim {
   }
 
   public setTier(newTier: number): void {
-    this.tier = Math.max(0, Math.min(2, newTier));
+    this.tier = Math.max(0, Math.min(CONFIG.MAX_TIER, newTier));
     this.updateFireInterval();
   }
 
@@ -62,9 +63,15 @@ export class CannonSim {
     this.updateFireInterval();
   }
 
+  public activateOverdrive(): void {
+    // Option A: 15s Overdrive that refreshes duration, never stacks
+    this.overdriveTimer = CONFIG.OVERDRIVE.DURATION_SEC;
+    this.updateFireInterval();
+  }
+
   private updateFireInterval(): void {
-    // Steady 6.0 volleys/s across all tiers keeps firing rhythm and audio cadence consistent
-    this.fireInterval = 1 / CONFIG.CANNON_FIRE_RATE;
+    const mult = this.overdriveTimer > 0 ? CONFIG.OVERDRIVE.FIRE_RATE_MULTIPLIER : 1.0;
+    this.fireInterval = 1 / (CONFIG.CANNON_FIRE_RATE * mult);
   }
 
   public reset(): void {
@@ -73,6 +80,7 @@ export class CannonSim {
     this.fireTimer = 0;
     this.tier = 0;
     this.cannonCount = 1;
+    this.overdriveTimer = 0;
     this.tierOption = 'option1';
     this.updateFireInterval();
     this.justFired = false;
@@ -110,19 +118,23 @@ export class CannonSim {
   public update(dt: number, pool: MobPool, rng: SeededRNG): void {
     this.justFired = false;
 
+    // 0. Update Overdrive buff timer
+    if (this.overdriveTimer > 0) {
+      this.overdriveTimer = Math.max(0, this.overdriveTimer - dt);
+      if (this.overdriveTimer === 0) {
+        this.updateFireInterval();
+      }
+    }
+
     // 1. Smoothly interpolate cannon position towards target
     const lerpFactor = Math.min(1, CONFIG.CANNON_LERP_SPEED * dt);
     this.x += (this.targetX - this.x) * lerpFactor;
 
-    // Determine current tier unit properties based on selected candidate option
-    let tierHp = 1;
-    let tierDamage = 1;
-    let tierWeight = 1;
-
-    // Model 1: tier changes shooter type and stats (Tier 0: hp 1, dmg 1; Tier 1: hp 2, dmg 1; Tier 2: hp 2, dmg 2)
-    tierHp = this.tier >= 1 ? 2 : 1;
-    tierDamage = this.tier === 2 ? 2 : 1;
-    tierWeight = 1;
+    // Determine current tier unit properties from CONFIG.TIERS
+    const tierStats = CONFIG.TIERS[this.tier] ?? CONFIG.TIERS[0];
+    const tierHp = tierStats.hp;
+    const tierDamage = tierStats.damage;
+    const tierWeight = tierStats.weight;
 
     // 2. Firing logic
     if (this.stressTargetCount > 0) {

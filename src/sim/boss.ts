@@ -126,7 +126,7 @@ export class BossManager {
 
         const distSq = dx * dx + dz * dz;
         if (distSq <= hitRadiusSq) {
-          const dmg = pool.weight[slot];
+          const dmg = pool.damage[slot] * pool.weight[slot];
           boss.hp -= dmg;
           this.justDamagedBoss = true;
           this.lastBossX = bx;

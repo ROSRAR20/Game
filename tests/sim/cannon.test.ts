@@ -88,7 +88,12 @@ describe('Cannon Simulation', () => {
     // Upgrade to tier 2
     expect(cannon.upgradeTier()).toBe(true);
     expect(cannon.tier).toBe(2);
-    expect(cannon.upgradeTier()).toBe(false); // Max tier capped at 2
+    expect(cannon.upgradeTier(2)).toBe(false); // Explicitly capped at 2 when maxTier=2
+
+    // Can upgrade all the way to CONFIG.MAX_TIER (9)
+    cannon.setTier(CONFIG.MAX_TIER);
+    expect(cannon.upgradeTier()).toBe(false); // Max tier capped at 9
+    cannon.setTier(2);
 
     // Fire at count 3, tier 2: fires 3 shots with tier 2 stats (hp 2, dmg 2)
     const prevCountT2 = pool.count;

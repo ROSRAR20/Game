@@ -60,19 +60,20 @@
 
       #debug-overlay {
         position: absolute;
-        top: calc(env(safe-area-inset-top, 0px) + 60px);
-        left: calc(env(safe-area-inset-left, 0px) + 8px);
-        background: rgba(0, 0, 0, 0.75);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 6px;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+        left: calc(env(safe-area-inset-left, 0px) + 10px);
+        background: rgba(0, 0, 0, 0.82);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 8px;
         padding: 6px 10px;
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         font-size: 11px;
         line-height: 1.4;
         color: #00ff88;
-        pointer-events: auto;
+        pointer-events: none;
         display: none;
         z-index: 1000;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
       }
 
       #debug-overlay .metric {
@@ -90,13 +91,15 @@
         position: absolute;
         top: calc(env(safe-area-inset-top, 0px) + 8px);
         left: calc(env(safe-area-inset-left, 0px) + 12px);
+        width: 48px;
+        height: 48px;
         min-width: 48px;
         min-height: 48px;
-        background: rgba(15, 23, 42, 0.85);
-        border: 1px solid rgba(56, 189, 248, 0.35);
-        border-radius: 12px;
-        color: #e2e8f0;
-        font-size: 18px;
+        background: rgba(15, 23, 42, 0.9);
+        border: 1.5px solid rgba(56, 189, 248, 0.45);
+        border-radius: 14px;
+        color: #f1f5f9;
+        font-size: 20px;
         font-weight: 900;
         display: flex;
         align-items: center;
@@ -104,12 +107,13 @@
         pointer-events: auto;
         cursor: pointer;
         z-index: 550;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+        transition: transform 0.1s ease;
       }
 
       #btn-pause-menu:active {
-        transform: scale(0.95);
-        background: rgba(30, 41, 59, 0.95);
+        transform: scale(0.94);
+        background: rgba(30, 41, 59, 0.96);
       }
 
       /* Base HP HUD */
@@ -117,11 +121,11 @@
         position: absolute;
         top: calc(env(safe-area-inset-top, 0px) + 8px);
         right: calc(env(safe-area-inset-right, 0px) + 12px);
-        width: 175px;
-        background: rgba(15, 23, 42, 0.85);
-        border: 1px solid rgba(56, 189, 248, 0.35);
-        border-radius: 12px;
-        padding: 6px 12px;
+        width: 185px;
+        background: rgba(15, 23, 42, 0.9);
+        border: 1.5px solid rgba(56, 189, 248, 0.45);
+        border-radius: 14px;
+        padding: 7px 12px;
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
         pointer-events: none;
         z-index: 500;
@@ -131,22 +135,26 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-        margin-bottom: 4px;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.6px;
+        margin-bottom: 5px;
         color: #94a3b8;
       }
 
       #base-hp-text {
         font-family: ui-monospace, SFMono-Regular, monospace;
+        font-variant-numeric: tabular-nums;
+        font-size: 11px;
+        font-weight: 800;
         color: #38bdf8;
       }
 
       #base-hp-track {
         width: 100%;
-        height: 8px;
-        background: rgba(30, 41, 59, 0.9);
+        height: 9px;
+        background: rgba(30, 41, 59, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 9999px;
         overflow: hidden;
       }
@@ -163,10 +171,10 @@
         background: linear-gradient(90deg, #ef4444 0%, #f97316 100%);
       }
 
-      /* Endless Mode HUD Banner */
+      /* Endless Mode HUD Banner (no backdrop-filter on active HUD for mobile fill-rate) */
       #endless-hud-banner {
         position: absolute;
-        top: calc(env(safe-area-inset-top, 0px) + 52px);
+        top: calc(env(safe-area-inset-top, 0px) + 66px);
         left: calc(env(safe-area-inset-left, 0px) + 12px);
         right: calc(env(safe-area-inset-right, 0px) + 12px);
         display: none;
@@ -184,24 +192,33 @@
       }
 
       .hud-stat-pill {
-        background: rgba(15, 23, 42, 0.85);
-        border: 1px solid rgba(56, 189, 248, 0.35);
-        border-radius: 8px;
-        padding: 4px 8px;
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        border-radius: 10px;
+        padding: 5px 10px;
         font-family: ui-monospace, SFMono-Regular, monospace;
+        font-variant-numeric: tabular-nums;
         font-size: 11px;
-        font-weight: 700;
-        color: #38bdf8;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        font-weight: 800;
+        color: #e0f2fe;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+        pointer-events: none;
+      }
+
+      .endless-badges-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
         pointer-events: none;
       }
 
       .hud-cannon-badge {
         align-self: flex-start;
-        background: rgba(14, 165, 233, 0.25);
+        background: rgba(2, 132, 199, 0.85);
         border: 1px solid #38bdf8;
-        border-radius: 6px;
-        padding: 2px 8px;
+        border-radius: 8px;
+        padding: 3px 9px;
         font-size: 10px;
         font-weight: 800;
         color: #f0f9ff;
@@ -211,10 +228,110 @@
         pointer-events: none;
       }
 
+      .hud-tier-badge {
+        background: rgba(30, 41, 59, 0.92);
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        border-radius: 8px;
+        padding: 3px 9px;
+        font-size: 10px;
+        font-weight: 800;
+        color: #f8fafc;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        pointer-events: none;
+      }
+
+      .hud-overdrive-badge {
+        display: none;
+        background: rgba(161, 98, 7, 0.92);
+        border: 1px solid #facc15;
+        border-radius: 8px;
+        padding: 3px 9px;
+        font-family: ui-monospace, SFMono-Regular, monospace;
+        font-variant-numeric: tabular-nums;
+        font-size: 10px;
+        font-weight: 900;
+        color: #fef08a;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 10px rgba(250, 204, 21, 0.45);
+        pointer-events: none;
+      }
+
+      .hud-boss-badge {
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(248, 113, 113, 0.5);
+        border-radius: 8px;
+        padding: 3px 9px;
+        font-family: ui-monospace, SFMono-Regular, monospace;
+        font-variant-numeric: tabular-nums;
+        font-size: 10px;
+        font-weight: 800;
+        color: #fca5a5;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        pointer-events: none;
+      }
+
+      .hud-boss-badge.active {
+        background: rgba(185, 28, 28, 0.92);
+        border-color: #f87171;
+        color: #fef2f2;
+        box-shadow: 0 2px 12px rgba(239, 68, 68, 0.55);
+      }
+
+      /* Max-Cap +1 Floating Popup (0 WebGL draw calls, no backdrop-filter) */
+      #panel-max-popup {
+        position: absolute;
+        left: 0;
+        top: 0;
+        transform: translate(-50%, -50%);
+        background: rgba(120, 53, 15, 0.94);
+        border: 2px solid #facc15;
+        border-radius: 9999px;
+        padding: 5px 14px;
+        font-family: ui-monospace, SFMono-Regular, monospace;
+        font-size: 14px;
+        font-weight: 900;
+        letter-spacing: 0.5px;
+        color: #fef08a;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+        box-shadow: 0 4px 16px rgba(250, 204, 21, 0.45);
+        pointer-events: none;
+        opacity: 0;
+        z-index: 650;
+        will-change: transform, opacity;
+      }
+
+      #panel-max-popup.show {
+        animation: maxCapPop 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+
+      @keyframes maxCapPop {
+        0% {
+          opacity: 0;
+          transform: translate(-50%, -20%) scale(0.75);
+        }
+        18% {
+          opacity: 1;
+          transform: translate(-50%, -65%) scale(1.1);
+        }
+        80% {
+          opacity: 1;
+          transform: translate(-50%, -120%) scale(1.0);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -155%) scale(0.95);
+        }
+      }
+
       /* Level Banner & Objective Tracker */
       #level-banner {
         position: absolute;
-        top: calc(env(safe-area-inset-top, 0px) + 52px);
+        top: calc(env(safe-area-inset-top, 0px) + 66px);
         right: calc(env(safe-area-inset-right, 0px) + 12px);
         width: 175px;
         background: rgba(15, 23, 42, 0.85);
@@ -322,7 +439,7 @@
       #main-menu {
         position: absolute;
         inset: 0;
-        background: radial-gradient(circle at center, #111827 0%, #0b0f19 100%);
+        background: radial-gradient(circle at 50% 30%, #1e293b 0%, #0b0f19 78%);
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -333,40 +450,41 @@
       }
 
       .menu-logo-box {
-        margin-bottom: 28px;
+        margin-bottom: 20px;
       }
 
       .menu-title {
-        font-size: 38px;
+        font-size: 42px;
         font-weight: 900;
         letter-spacing: 3px;
-        background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+        background: linear-gradient(135deg, #38bdf8 0%, #60a5fa 50%, #facc15 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         text-transform: uppercase;
         margin-bottom: 6px;
-        text-shadow: 0 0 24px rgba(56, 189, 248, 0.4);
+        filter: drop-shadow(0 0 18px rgba(56, 189, 248, 0.35));
       }
 
       .menu-subtitle {
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 2px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 2.5px;
         color: #94a3b8;
         text-transform: uppercase;
       }
 
       .menu-mission-badge {
         display: inline-block;
-        background: rgba(30, 41, 59, 0.85);
-        border: 1px solid rgba(56, 189, 248, 0.3);
-        border-radius: 9999px;
-        padding: 8px 18px;
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        border-radius: 16px;
+        padding: 12px 20px;
         font-size: 13px;
         font-weight: 800;
         color: #38bdf8;
         letter-spacing: 0.5px;
-        margin-bottom: 32px;
+        margin-bottom: 28px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
       }
 
       .menu-actions {
@@ -374,7 +492,65 @@
         flex-direction: column;
         gap: 14px;
         width: 100%;
-        max-width: 240px;
+        max-width: 250px;
+      }
+
+      /* Pause Modal (backdrop-filter allowed on static modals) */
+      #pause-modal {
+        position: absolute;
+        inset: 0;
+        background: rgba(11, 15, 25, 0.84);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2200;
+        pointer-events: auto;
+        padding: 24px;
+      }
+
+      .pause-card {
+        background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+        border: 2px solid rgba(56, 189, 248, 0.5);
+        border-radius: 22px;
+        padding: 26px 22px;
+        text-align: center;
+        max-width: 320px;
+        width: 100%;
+        box-shadow: 0 20px 44px rgba(0, 0, 0, 0.6);
+      }
+
+      .pause-title {
+        color: #38bdf8;
+        font-size: 24px;
+        font-weight: 900;
+        letter-spacing: 2px;
+        margin-bottom: 14px;
+        text-transform: uppercase;
+      }
+
+      .pause-stats {
+        background: rgba(15, 23, 42, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 10px 14px;
+        margin-bottom: 20px;
+        font-family: ui-monospace, SFMono-Regular, monospace;
+        font-variant-numeric: tabular-nums;
+        font-size: 12px;
+        color: #94a3b8;
+        line-height: 1.7;
+      }
+
+      .pause-stat-row {
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .pause-stat-val {
+        color: #f8fafc;
+        font-weight: 800;
       }
 
       /* Level Select Modal */
@@ -625,6 +801,9 @@
           </div>
           <div class="endless-badges-row">
             <span id="hud-cannon-count" class="hud-cannon-badge">CANNON x1</span>
+            <span id="hud-cannon-tier" class="hud-tier-badge">TIER 0</span>
+            <span id="hud-overdrive" class="hud-overdrive-badge">OVERDRIVE 15.0s</span>
+            <span id="hud-boss-status" class="hud-boss-badge">BOSS IN 60s</span>
           </div>
         </div>
         <div id="level-banner">
@@ -638,6 +817,7 @@
             <span id="obj-boss" class="obj-tag">BOSS: 1</span>
           </div>
         </div>
+        <div id="panel-max-popup">MAX! +250</div>
         <div id="debug-overlay">
           <div class="metric"><span class="label">FPS:</span><span id="dbg-fps">60</span></div>
           <div class="metric"><span class="label">MS:</span><span id="dbg-ms">16.6</span></div>
@@ -675,15 +855,36 @@
         </div>
       </div>
 
+      <!-- Pause Modal -->
+      <div id="pause-modal">
+        <div class="pause-card">
+          <h2 class="pause-title">PAUSED</h2>
+          <div class="pause-stats">
+            <div class="pause-stat-row"><span>TIME:</span><span id="pause-time" class="pause-stat-val">00:00</span></div>
+            <div class="pause-stat-row"><span>SCORE:</span><span id="pause-score" class="pause-stat-val">0</span></div>
+            <div class="pause-stat-row"><span>CANNON:</span><span id="pause-cannon" class="pause-stat-val">x1 (TIER 0)</span></div>
+          </div>
+          <div class="modal-btn-stack">
+            <button id="btn-resume" class="action-btn btn-primary" type="button">RESUME</button>
+            <button id="btn-pause-restart" class="action-btn btn-secondary" type="button">RESTART RUN</button>
+            <button id="btn-pause-sound" class="action-btn btn-secondary" type="button">🔊 SOUND: ON</button>
+            <button id="btn-pause-mainmenu" class="action-btn btn-danger" type="button">MAIN MENU</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Game Over Modal -->
       <div id="game-over-modal">
         <div class="game-over-card">
           <h1 class="game-over-title">BASE DESTROYED</h1>
           <p class="game-over-subtitle">The horde reached your defense line.</p>
           <div id="go-stats" style="margin: 16px 0; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; color: #94a3b8; text-align: left; background: rgba(0,0,0,0.3); padding: 12px 14px; border-radius: 8px; line-height: 1.6;">
-            <div style="display: flex; justify-content: space-between;"><span>TIME:</span><span id="go-time" style="color: #ffffff; font-weight: bold;">00:00</span></div>
+            <div style="display: flex; justify-content: space-between;"><span>TIME SURVIVED:</span><span id="go-time" style="color: #ffffff; font-weight: bold;">00:00</span></div>
+            <div style="display: flex; justify-content: space-between;"><span>BEST TIME:</span><span id="go-best-time" style="color: #94a3b8; font-weight: bold;">00:00</span></div>
             <div style="display: flex; justify-content: space-between;"><span>SCORE:</span><span id="go-score" style="color: #38bdf8; font-weight: bold;">0</span></div>
-            <div style="display: flex; justify-content: space-between;"><span>BEST:</span><span id="go-best" style="color: #facc15; font-weight: bold;">0</span></div>
+            <div style="display: flex; justify-content: space-between;"><span>BEST SCORE:</span><span id="go-best" style="color: #facc15; font-weight: bold;">0</span></div>
+            <div style="display: flex; justify-content: space-between;"><span>KILLS:</span><span id="go-kills" style="color: #38bdf8; font-weight: bold;">0</span></div>
+            <div style="display: flex; justify-content: space-between;"><span>BOSSES DEFEATED:</span><span id="go-bosses" style="color: #f87171; font-weight: bold;">0</span></div>
           </div>
           <div class="modal-btn-stack">
             <button id="btn-restart" class="action-btn btn-danger" type="button">RETRY RUN</button>

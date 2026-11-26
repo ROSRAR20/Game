@@ -10,7 +10,8 @@ import { TowerManager } from './towers';
 import { BossManager } from './boss';
 import { PickupManager } from './pickups';
 import { EndlessManager } from './endless';
-import { PanelManager } from './panels';
+import { PanelManager, PanelBonusEvent } from './panels';
+import { StatueQueueManager, StatueUpdateResult } from './statues';
 import { getLevelGates, getLevelData, LevelData } from '../data/level';
 
 export class Simulation {
@@ -26,6 +27,9 @@ export class Simulation {
   public pickups: PickupManager;
   public endless: EndlessManager;
   public panels: PanelManager;
+  public statues: StatueQueueManager;
+  public lastStatueEvent: StatueUpdateResult | null = null;
+  public lastPanelBonusEvent: PanelBonusEvent | null = null;
   public isEndless: boolean = false;
   public ticks: number = 0;
   public isGameWon: boolean = false;
@@ -46,6 +50,7 @@ export class Simulation {
     this.rng = new SeededRNG(seed);
     this.endless = new EndlessManager(seed);
     this.panels = new PanelManager(seed);
+    this.statues = new StatueQueueManager();
 
     const levelData = getLevelData(this.currentLevelId);
     this.gates = new GateManager(this.rng);
@@ -64,6 +69,11 @@ export class Simulation {
     this.ticks = Math.floor(startAtSeconds * 60);
     this.endless.reset(startAtSeconds);
     this.panels.reset();
+    this.statues.reset();
+    this.towers.setTowers([]);
+    this.bosses.setBosses([]);
+    this.lastStatueEvent = null;
+    this.lastPanelBonusEvent = null;
     // In endless mode, only the 2 centre gates (Gate 1 and Gate 2) are active
     const levelGates = getLevelGates(1).filter((g) => g.id === 1 || g.id === 2);
     this.gates.setGates(levelGates);
@@ -229,11 +239,64 @@ export class Simulation {
       this.ticks++;
       const teamCounts = this.getTeamCounts();
       this.endless.update(dt, this.pool, teamCounts.red);
+
+      // Periodic Boss spawning (Stage 5)
+      if (this.endless.difficultyTime >= this.endless.nextBossTimeSec) {
+        this.endless.bossSpawnCount++;
+        const bossNum = this.endless.bossSpawnCount;
+        const bossHp = CONFIG.ENDLESS_BOSS.BASE_HP + (bossNum - 1) * CONFIG.ENDLESS_BOSS.HP_STEP;
+        this.endless.nextBossTimeSec += CONFIG.ENDLESS_BOSS.INTERVAL_SEC;
+
+        // Replace defeated boss slots with the new periodic boss (or append if an earlier boss is still alive)
+        const activeBosses = this.bosses.bosses.filter((b) => !b.isDefeated);
+        const newBossData = {
+          id: bossNum,
+          x: CONFIG.ENDLESS_BOSS.SPAWN_X,
+          z: CONFIG.ENDLESS_BOSS.SPAWN_Z,
+          radius: CONFIG.ENDLESS_BOSS.RADIUS,
+          maxHp: bossHp,
+          damage: CONFIG.ENDLESS_BOSS.BASE_DAMAGE,
+          speed: CONFIG.ENDLESS_BOSS.SPEED
+        };
+        this.bosses.setBosses([
+          ...activeBosses.map((b) => ({
+            id: b.id,
+            x: b.x,
+            z: b.z,
+            radius: b.radius,
+            maxHp: b.maxHp,
+            damage: b.damage,
+            speed: b.speed
+          })),
+          newBossData
+        ]);
+        // Preserve live HP of any still-active earlier boss
+        for (let i = 0; i < activeBosses.length; i++) {
+          this.bosses.bosses[i].hp = activeBosses[i].hp;
+        }
+      }
+
       const panelCollision = this.panels.update(dt, this.endless.difficultyTime, this.cannon);
       if (panelCollision.bonusScoreAwarded > 0) {
         this.endless.addScore(panelCollision.bonusScoreAwarded);
+        if (panelCollision.bonusEvent) {
+          this.lastPanelBonusEvent = panelCollision.bonusEvent;
+        }
+      }
+      const statueResult = this.statues.update(dt, this.pool, this.cannon);
+      if (statueResult.scoreAwarded > 0) {
+        this.endless.addScore(statueResult.scoreAwarded);
+      }
+      if (statueResult.destroyedStatue) {
+        this.lastStatueEvent = statueResult;
       }
       this.gates.update(this.pool, dt);
+      this.bosses.update(dt, this.pool, this.base);
+      if (this.bosses.justDefeatedBoss) {
+        this.base.heal(CONFIG.ENDLESS_BOSS.REWARD_HP);
+        this.endless.addScore(CONFIG.ENDLESS_BOSS.REWARD_SCORE);
+        this.endless.bossesDefeated++;
+      }
       const combatStats = this.combat.resolveCombat(this.pool);
       this.endless.kills += combatStats.redKilled;
       this.combat.checkBaseBreaches(this.pool, this.base);

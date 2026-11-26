@@ -5,6 +5,9 @@ export interface HudCallbacks {
   onRestart: () => void;
   onNextLevel: () => void;
   onOpenMenu: () => void;
+  onPause?: () => void;
+  onResume?: () => void;
+  onToggleSound?: () => boolean;
 }
 
 export class HudController {
@@ -31,6 +34,15 @@ export class HudController {
   private hudEndlessScore: HTMLElement | null = null;
   private hudEndlessBest: HTMLElement | null = null;
   private hudCannonCount: HTMLElement | null = null;
+  private hudCannonTier: HTMLElement | null = null;
+  private hudOverdrive: HTMLElement | null = null;
+  private hudBossStatus: HTMLElement | null = null;
+  private panelMaxPopup: HTMLElement | null = null;
+  private pauseModal: HTMLElement | null = null;
+  private btnResume: HTMLElement | null = null;
+  private btnPauseRestart: HTMLElement | null = null;
+  private btnPauseSound: HTMLElement | null = null;
+  private btnPauseMainMenu: HTMLElement | null = null;
   private lastEndlessUpdateMs: number = 0;
 
   private lastHp: number = CONFIG.BASE_MAX_HP;
@@ -69,6 +81,15 @@ export class HudController {
     this.hudEndlessScore = document.getElementById('hud-endless-score');
     this.hudEndlessBest = document.getElementById('hud-endless-best');
     this.hudCannonCount = document.getElementById('hud-cannon-count');
+    this.hudCannonTier = document.getElementById('hud-cannon-tier');
+    this.hudOverdrive = document.getElementById('hud-overdrive');
+    this.hudBossStatus = document.getElementById('hud-boss-status');
+    this.panelMaxPopup = document.getElementById('panel-max-popup');
+    this.pauseModal = document.getElementById('pause-modal');
+    this.btnResume = document.getElementById('btn-resume');
+    this.btnPauseRestart = document.getElementById('btn-pause-restart');
+    this.btnPauseSound = document.getElementById('btn-pause-sound');
+    this.btnPauseMainMenu = document.getElementById('btn-pause-mainmenu');
 
     if (this.restartBtn) {
       this.restartBtn.addEventListener('click', () => {
@@ -107,6 +128,40 @@ export class HudController {
 
     if (this.btnPauseMenu) {
       this.btnPauseMenu.addEventListener('click', () => {
+        if (this.callbacks.onPause) {
+          this.callbacks.onPause();
+        } else {
+          this.callbacks.onOpenMenu();
+        }
+      });
+    }
+
+    if (this.btnResume) {
+      this.btnResume.addEventListener('click', () => {
+        this.hidePause();
+        this.callbacks.onResume?.();
+      });
+    }
+
+    if (this.btnPauseRestart) {
+      this.btnPauseRestart.addEventListener('click', () => {
+        this.hidePause();
+        this.callbacks.onRestart();
+      });
+    }
+
+    if (this.btnPauseSound) {
+      this.btnPauseSound.addEventListener('click', () => {
+        if (this.callbacks.onToggleSound) {
+          const isMuted = this.callbacks.onToggleSound();
+          this.updatePauseSoundButton(isMuted);
+        }
+      });
+    }
+
+    if (this.btnPauseMainMenu) {
+      this.btnPauseMainMenu.addEventListener('click', () => {
+        this.hidePause();
         this.callbacks.onOpenMenu();
       });
     }
@@ -128,7 +183,13 @@ export class HudController {
     timeSec: number,
     score: number,
     bestScore: number,
-    cannonCount: number
+    cannonCount: number,
+    tier: number = 0,
+    overdriveSec: number = 0,
+    bossCountdownSec: number = 60,
+    activeBossHp: number = 0,
+    activeBossMaxHp: number = 0,
+    activeBossId: number = 0
   ): void {
     const now = performance.now();
     if (now - this.lastEndlessUpdateMs < 100) {
@@ -149,6 +210,26 @@ export class HudController {
     }
     if (this.hudCannonCount) {
       this.hudCannonCount.textContent = `CANNON x${cannonCount}`;
+    }
+    if (this.hudCannonTier) {
+      this.hudCannonTier.textContent = `TIER ${tier} / ${CONFIG.MAX_TIER}`;
+    }
+    if (this.hudOverdrive) {
+      if (overdriveSec > 0) {
+        this.hudOverdrive.style.display = 'inline-block';
+        this.hudOverdrive.textContent = `OVERDRIVE ${overdriveSec.toFixed(1)}s`;
+      } else {
+        this.hudOverdrive.style.display = 'none';
+      }
+    }
+    if (this.hudBossStatus) {
+      if (activeBossHp > 0 && activeBossMaxHp > 0) {
+        this.hudBossStatus.classList.add('active');
+        this.hudBossStatus.textContent = `BOSS #${activeBossId}: ${Math.ceil(activeBossHp)}/${activeBossMaxHp} HP`;
+      } else {
+        this.hudBossStatus.classList.remove('active');
+        this.hudBossStatus.textContent = `BOSS IN ${Math.ceil(bossCountdownSec)}s`;
+      }
     }
   }
 
@@ -245,6 +326,47 @@ export class HudController {
     }, 120);
   }
 
+  public showMaxPanelPopup(screenX: number, screenY: number, amount: number): void {
+    const el = this.panelMaxPopup;
+    if (!el) return;
+    const containerWidth = el.parentElement?.clientWidth || 390;
+    const clampedX = Math.max(76, Math.min(containerWidth - 76, screenX));
+    el.textContent = `MAX! +${amount}`;
+    el.style.left = `${Math.round(clampedX)}px`;
+    el.style.top = `${Math.round(screenY)}px`;
+    el.classList.remove('show');
+    // Trigger reflow to restart CSS keyframe animation cleanly
+    void el.offsetWidth;
+    el.classList.add('show');
+  }
+
+  public showPause(timeSec: number, score: number, cannonCount: number, tier: number, isMuted: boolean): void {
+    const timeEl = document.getElementById('pause-time');
+    const scoreEl = document.getElementById('pause-score');
+    const cannonEl = document.getElementById('pause-cannon');
+    const m = Math.floor(timeSec / 60);
+    const s = Math.floor(timeSec % 60);
+    if (timeEl) timeEl.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    if (scoreEl) scoreEl.textContent = `${score.toLocaleString()} PTS`;
+    if (cannonEl) cannonEl.textContent = `x${cannonCount} (TIER ${tier}/${CONFIG.MAX_TIER})`;
+    this.updatePauseSoundButton(isMuted);
+    if (this.pauseModal) {
+      this.pauseModal.style.display = 'flex';
+    }
+  }
+
+  public hidePause(): void {
+    if (this.pauseModal && this.pauseModal.style.display !== 'none') {
+      this.pauseModal.style.display = 'none';
+    }
+  }
+
+  public updatePauseSoundButton(isMuted: boolean): void {
+    if (this.btnPauseSound) {
+      this.btnPauseSound.textContent = isMuted ? '🔇 SOUND: OFF' : '🔊 SOUND: ON';
+    }
+  }
+
   public showGameOver(): void {
     if (this.gameOverModal && this.gameOverModal.style.display !== 'flex') {
       this.gameOverModal.style.display = 'flex';
@@ -255,19 +377,28 @@ export class HudController {
     score: number,
     survivalSeconds: number,
     bestScore: number,
+    bestTimeSec: number,
+    kills: number,
+    bossesDefeated: number,
     isNewBest: boolean
   ): void {
     const timeEl = document.getElementById('go-time');
+    const bestTimeEl = document.getElementById('go-best-time');
     const scoreEl = document.getElementById('go-score');
     const bestEl = document.getElementById('go-best');
+    const killsEl = document.getElementById('go-kills');
+    const bossesEl = document.getElementById('go-bosses');
     const formatTime = (totalSec: number) => {
       const m = Math.floor(totalSec / 60);
-      const s = totalSec % 60;
+      const s = Math.floor(totalSec % 60);
       return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
     if (timeEl) timeEl.textContent = formatTime(survivalSeconds);
+    if (bestTimeEl) bestTimeEl.textContent = formatTime(bestTimeSec);
     if (scoreEl) scoreEl.textContent = `${score.toLocaleString()}${isNewBest ? ' 🔥 NEW BEST!' : ''}`;
     if (bestEl) bestEl.textContent = `${bestScore.toLocaleString()} PTS`;
+    if (killsEl) killsEl.textContent = kills.toLocaleString();
+    if (bossesEl) bossesEl.textContent = bossesDefeated.toLocaleString();
     this.showGameOver();
   }
 

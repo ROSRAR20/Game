@@ -120,9 +120,10 @@ export const CONFIG = {
     DESPAWN_Z: 5.0, // cannon line
     SPAWN_X: 4.0, // left tunnel mouth (world X in [2, 6])
     SPAWN_Z: 22.0,
-    WIDTH: 1.4,
-    HEIGHT: 1.0,
-    DEPTH: 0.4,
+    WIDTH: 2.4, // Large arcade gate size (at least as large as x2/+5 gates)
+    HEIGHT: 2.2, // Visual height matching gate banners
+    BANNER_Y: 1.2, // Elevation above road surface
+    DEPTH: 0.5,
     BASE_INTERVAL: 12.0, // seconds
     MIN_INTERVAL: 6.0,
     MAX_CANNON_COUNT: 6,
@@ -134,6 +135,57 @@ export const CONFIG = {
     POOL_THRESHOLD: 3000,
     MAX_UNIT_WEIGHT: 10,
     MAX_VISUAL_SCALE: 1.8
+  },
+
+  // Weapon Tier Stats (Model 1: count = shooters 1..6, tier = shooter type 0..9)
+  TIERS: {
+    0: { hp: 1, damage: 1, weight: 1, name: 'Field Cannon', color: 0xffffff },
+    1: { hp: 2, damage: 1, weight: 1, name: 'Wheeled Cannon', color: 0xffffff },
+    2: { hp: 2, damage: 2, weight: 1, name: 'Armoured Squad', color: 0xffffff },
+    3: { hp: 3, damage: 2, weight: 1, name: 'Heavy Twin-Rig', color: 0x34d399 },
+    4: { hp: 3, damage: 3, weight: 1, name: 'Siege Battery', color: 0xa78bfa },
+    5: { hp: 4, damage: 3, weight: 1, name: 'Plasma Vanguard', color: 0xf472b6 },
+    6: { hp: 4, damage: 4, weight: 1, name: 'Titan Striker', color: 0xf87171 },
+    7: { hp: 5, damage: 5, weight: 1, name: 'Solar Warden', color: 0xfbbf24 },
+    8: { hp: 6, damage: 6, weight: 1, name: 'Nova Colossus', color: 0xfde047 },
+    9: { hp: 8, damage: 8, weight: 1, name: 'Apex Overlord', color: 0xfef9c3 }
+  } as Record<number, { hp: number; damage: number; weight: number; name: string; color: number }>,
+
+  MAX_TIER: 9,
+
+  // Right-Lane Sliding Statue Queue (Stage 4 & Stage 6 steeper scaling)
+  STATUES: {
+    LANE_X: -4.0, // Screen-Right Lane (world X in [-6, -2])
+    SLOT_Z: [12.0, 16.0, 20.0] as readonly number[], // Slot 1 (Active), Slot 2, Slot 3
+    SPAWN_Z: 22.0, // Right Tunnel mouth
+    SLIDE_SPEED: 4.0, // m/s
+    HITTABLE_Z_THRESHOLD: 12.2, // Slot 1 hittable once within 0.2m of 12.0
+    RADIUS: 1.1,
+    BASE_HP: 27, // 27 / 6.0 DPS = 4.5s at Tier 0, Count 1
+    HP_STEP: 27, // Linear term: 27 * K
+    QUADRATIC_STEP: 15, // Quadratic term: 15 * (K - 1)^2
+    UPGRADE_SCORE: 250,
+    OVERDRIVE_SCORE: 1000
+  },
+
+  // Overdrive Buff (Stage 4: Statue 3+ reward)
+  OVERDRIVE: {
+    DURATION_SEC: 15.0,
+    FIRE_RATE_MULTIPLIER: 1.5 // +50% fire rate (6 -> 9 volleys/s); refreshes, never stacks
+  },
+
+  // Periodic Boss Encounters (Stage 5)
+  ENDLESS_BOSS: {
+    INTERVAL_SEC: 60.0, // Spawns every 60s
+    SPAWN_X: 0.0,
+    SPAWN_Z: 34.0, // Inside far half (Z > 22) and 100% inside Preset A NDC bounds
+    RADIUS: 2.0,
+    BASE_HP: 120, // Boss 1 HP = 120
+    HP_STEP: 160, // Boss N HP = 120 + (N - 1) * 160
+    SPEED: 0.7, // m/s (34m march = 48.6s)
+    BASE_DAMAGE: 40, // Base breach penalty
+    REWARD_HP: 20, // +20 Base HP on defeat (capped at maxHp)
+    REWARD_SCORE: 1500 // +1500 score on defeat
   },
 
   // Visual colors (bright high-contrast arcade palette)

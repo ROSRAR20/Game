@@ -27,8 +27,6 @@ export class PanelRenderer {
     });
 
     const geometry = new THREE.PlaneGeometry(CONFIG.PANELS.WIDTH, CONFIG.PANELS.HEIGHT);
-    // Align banner strictly parallel to road cross-section at height Y = 1.0
-    geometry.rotateY(Math.PI);
 
     this.instancedMesh = new THREE.InstancedMesh(geometry, this.material, maxPanels);
     this.instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -40,39 +38,39 @@ export class PanelRenderer {
 
   private static createPanelTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 128;
+    canvas.width = 512;
+    canvas.height = 256;
     const ctx = canvas.getContext('2d');
 
     if (!ctx) {
       return new THREE.CanvasTexture(canvas);
     }
 
-    ctx.clearRect(0, 0, 256, 128);
+    ctx.clearRect(0, 0, 512, 256);
 
     // Glowing bright cyan rounded panel
-    const radius = 20;
+    const radius = 32;
     ctx.beginPath();
-    ctx.roundRect(8, 8, 240, 112, radius);
+    ctx.roundRect(16, 16, 480, 224, radius);
 
-    const grad = ctx.createLinearGradient(0, 8, 0, 120);
+    const grad = ctx.createLinearGradient(0, 16, 0, 240);
     grad.addColorStop(0, '#0284c7');
-    grad.addColorStop(1, 'rgba(12, 74, 110, 0.95)');
+    grad.addColorStop(1, 'rgba(8, 47, 73, 0.96)');
     ctx.fillStyle = grad;
     ctx.fill();
 
-    ctx.lineWidth = 6;
+    ctx.lineWidth = 10;
     ctx.strokeStyle = '#38bdf8';
     ctx.stroke();
 
-    // High-contrast "+1" label
-    ctx.font = '900 58px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    // High-contrast, massive "+1" label readable at a glance
+    ctx.font = '900 116px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#00f5ff';
+    ctx.shadowBlur = 24;
     ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = '#38bdf8';
-    ctx.shadowBlur = 14;
-    ctx.fillText('+1', 128, 64);
+    ctx.fillText('+1', 256, 128);
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -87,8 +85,8 @@ export class PanelRenderer {
 
     for (let i = 0; i < count; i++) {
       const p = panels[i];
-      // Slight floating bob animation based on Z position
-      const bobY = 0.9 + Math.sin(p.z * 2.0) * 0.08;
+      // Floating bob animation based on Z position centered around BANNER_Y
+      const bobY = CONFIG.PANELS.BANNER_Y + Math.sin(p.z * 2.0) * 0.08;
       this.dummy.position.set(p.x, bobY, p.z);
       this.dummy.rotation.set(0, Math.PI, 0);
       this.dummy.updateMatrix();

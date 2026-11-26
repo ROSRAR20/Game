@@ -40,6 +40,14 @@ export class BaseDefense {
   }
 
   /**
+   * Restores base HP up to maxHp (if not already game over).
+   */
+  public heal(amount: number): void {
+    if (this.isGameOver || amount <= 0) return;
+    this.hp = Math.min(this.maxHp, this.hp + amount);
+  }
+
+  /**
    * Resets base defense back to full health.
    */
   public reset(): void {

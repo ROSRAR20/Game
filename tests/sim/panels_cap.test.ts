@@ -181,6 +181,8 @@ describe('Stage 3: Cap Weight Merging & Moving +1 Panels', () => {
       expect(res.collectedCount).toBe(1);
       expect(res.newShooterCount).toBe(6);
       expect(res.bonusScoreAwarded).toBe(250);
+      expect(res.bonusEvent).not.toBeNull();
+      expect(res.bonusEvent?.amount).toBe(250);
       expect(cannon.cannonCount).toBe(6);
     });
   });
@@ -211,9 +213,9 @@ describe('Stage 3: Cap Weight Merging & Moving +1 Panels', () => {
       // Cannon positioned at lane boundary X = 2.0
       cannon.x = 2.0;
 
-      // Panel at X = 4.0 (half-width 0.7 -> span [3.3, 4.7]), Z = CANNON_Z
-      // Count 1: span is [1.25, 2.75] -> maxX 2.75 < 3.3 -> misses
-      // Count 6: span is [0.25, 3.75] -> maxX 3.75 >= 3.3 -> touches!
+      // Panel at X = 4.0 with width 2.4 (half-width 1.2 -> span [2.8, 5.2]), Z = CANNON_Z
+      // Count 1: span is [1.25, 2.75] -> maxX 2.75 < 2.8 -> misses
+      // Count 6: span is [0.25, 3.75] -> maxX 3.75 >= 2.8 -> touches!
 
       // Test with Count 1:
       cannon.setCannonCount(1);
@@ -232,6 +234,71 @@ describe('Stage 3: Cap Weight Merging & Moving +1 Panels', () => {
       p2.z = CONFIG.CANNON_Z;
       const res6 = pm.update(0.01, 0, cannon);
       expect(res6.collectedCount).toBe(1); // Count 6 touches!
+    });
+
+    describe('Boundary Straddling: Any Overlap vs Center Requirement', () => {
+      it('rigorously tests cluster straddling the left-lane/centre-lane boundary (X = 2.0)', () => {
+        const pm = new PanelManager(42);
+        const cannon = new CannonSim();
+
+        // Panel at X = 4.0 with width 2.4 (span [2.8, 5.2])
+        const setupPanel = () => {
+          pm.reset();
+          const p = pm.spawnPanel();
+          p.x = 4.0;
+          p.z = CONFIG.CANNON_Z;
+          return p;
+        };
+
+        // 1. Center of Centre Lane (X = 0.0) -> Neither Count 1 nor Count 6 collects
+        cannon.x = 0.0;
+        cannon.setCannonCount(1);
+        setupPanel();
+        expect(pm.update(0.01, 0, cannon).collectedCount).toBe(0);
+
+        cannon.setCannonCount(6);
+        setupPanel();
+        expect(pm.update(0.01, 0, cannon).collectedCount).toBe(0); // maxX = 1.75 < 2.8
+
+        // 2. Cannon at X = 1.0 (inside centre lane, X < 2.0)
+        cannon.x = 1.0;
+        cannon.setCannonCount(1);
+        setupPanel();
+        expect(pm.update(0.01, 0, cannon).collectedCount).toBe(0); // maxX = 1.75 < 2.8
+
+        cannon.setCannonCount(6);
+        setupPanel();
+        expect(pm.update(0.01, 0, cannon).collectedCount).toBe(0); // maxX = 2.75 < 2.8
+
+        // 3. Straddling: Cannon center at X = 1.5 (center is in Centre Lane, 1.5 < 2.0)
+        // Under "Any Overlap" (Physical Chassis Contact):
+        // Count 1: span is [0.75, 2.25] -> maxX 2.25 < 2.8 -> MISS
+        // Count 6: span is [-0.25, 3.25] -> maxX 3.25 >= 2.8 -> TOUCHES & COLLECTS!
+        cannon.x = 1.5;
+        cannon.setCannonCount(1);
+        setupPanel();
+        expect(pm.update(0.01, 0, cannon).collectedCount).toBe(0);
+
+        cannon.setCannonCount(6);
+        setupPanel();
+        const resStraddle = pm.update(0.01, 0, cannon);
+        expect(resStraddle.collectedCount).toBe(1); // Wing touched panel across the boundary!
+
+        // If a hypothetical "Center Requirement" (cannon.x >= 2.0) were used:
+        const centerRequirementMet = cannon.x >= 2.0;
+        expect(centerRequirementMet).toBe(false); // Fails center requirement even though wing overlaps
+
+        // 4. Cannon center crosses into Left Lane (X = 2.5 >= 2.0)
+        // Both Count 1 (maxX = 3.25 >= 2.8) and Count 6 (maxX = 4.25 >= 2.8) collect
+        cannon.x = 2.5;
+        cannon.setCannonCount(1);
+        setupPanel();
+        expect(pm.update(0.01, 0, cannon).collectedCount).toBe(1);
+
+        cannon.setCannonCount(6);
+        setupPanel();
+        expect(pm.update(0.01, 0, cannon).collectedCount).toBe(1);
+      });
     });
   });
 });

@@ -92,17 +92,17 @@ test('Stage 3 Walkthrough: measures draw calls for count 1 vs count 6 and captur
     return metrics;
   };
 
-  // 1. Measure count 1 draw calls
+  // 1. Measure count 1 draw calls on default camera
   const m1 = await captureScenario(
     'Count 1 Single Shooter (?count=1)',
-    '?skipMenu&debug&camPreset=middle&count=1',
+    '?skipMenu&debug&count=1',
     'stage3-endless-count1-390x844.png'
   );
 
-  // 2. Measure count 6 maximum shooters
+  // 2. Measure count 6 maximum shooters on default camera
   const m6 = await captureScenario(
     'Count 6 Cluster Shooters (?count=6)',
-    '?skipMenu&debug&camPreset=middle&count=6',
+    '?skipMenu&debug&count=6',
     'stage3-endless-count6-390x844.png'
   );
 
@@ -110,10 +110,10 @@ test('Stage 3 Walkthrough: measures draw calls for count 1 vs count 6 and captur
   expect(m1.render?.calls).toBe(m6.render?.calls);
   expect(m1.render?.calls).toBeLessThanOrEqual(30);
 
-  // 3. Capture Walkthrough screenshot: cluster of 3 shooters + moving +1 panel in Left Lane
+  // 3. Capture Walkthrough screenshot on default camera: cluster of 3 shooters + moving +1 panel in Left Lane
   await captureScenario(
     'Stage 3 Walkthrough: 3 Shooters + Moving Panel (?count=3)',
-    '?skipMenu&debug&camPreset=middle&count=3',
+    '?skipMenu&debug&count=3',
     'stage3-endless-panel-cluster-390x844.png',
     true
   );
